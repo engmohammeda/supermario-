@@ -95,6 +95,9 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
       - name: Gradle unit tests (N2)
         run: ./gradlew testDebugUnitTest
 
