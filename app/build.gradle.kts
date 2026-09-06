@@ -1,7 +1,6 @@
 // :app -- Compose UI, no emulation knowledge beyond :engine's API.
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -34,8 +33,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     buildFeatures { compose = true }
@@ -50,7 +49,7 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
     composeCompiler {
         // Stable IDs keep Compose UI tests and layout inspectors meaningful across
         // rebuilds; harmless when tests are not run.

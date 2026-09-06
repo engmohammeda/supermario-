@@ -1,0 +1,6 @@
+{
+  "name": "MarioBox",
+  "description": "NES/Famicom emulator with customizable touch controls, save states, and cheats",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -128,7 +128,7 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(top: 4.dp)
+                .padding(top = 4.dp)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.Top,
         ) {

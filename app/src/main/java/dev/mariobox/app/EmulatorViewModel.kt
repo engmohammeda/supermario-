@@ -59,7 +59,8 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
         private set
     var toast by mutableStateOf<String?>(null)
     var error by mutableStateOf<String?>(null)
-    var paused by mutableStateOf(false)
+    private var _paused by mutableStateOf(false)
+    val paused: Boolean get() = _paused
     var cheats by mutableStateOf<List<Cheat>>(emptyList())
     var options by mutableStateOf<List<CoreOption>>(emptyList())
 
@@ -149,7 +150,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
                     engine.applyRender(prefs.renderSettings())
                     engine.setVolume(prefs.volume)
                     applyOptionOverrides()
-                    paused = engine.isPaused
+                    _paused = engine.isPaused
                     replaySurface()
                     if (engine.cheats().isEmpty()) restoreCheats() else reloadCheatList()
                     options = engine.options()
@@ -195,7 +196,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
     fun setPaused(p: Boolean) {
         if (!engine.active) return
         engine.setPaused(p)
-        paused = engine.isPaused
+        _paused = engine.isPaused
     }
 
     fun togglePause() = setPaused(!paused)
@@ -286,7 +287,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
     fun pollStats() {
         if (!engine.active) return
         stats = engine.stats()
-        paused = engine.isPaused
+        _paused = engine.isPaused
     }
 
     fun refreshPresentation() {
@@ -368,7 +369,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
             withContext(Dispatchers.Main) {
                 toast = if (rc == MbStatus.OK) s(R.string.states_loaded, slotName(index))
                 else s(R.string.states_load_failed, MbStatus.describe(rc, engine.lastError()))
-                paused = engine.isPaused
+                _paused = engine.isPaused
             }
         }
     }

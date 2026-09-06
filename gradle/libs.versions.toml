@@ -1,18 +1,18 @@
-// Version catalogue. The pins here are the ones docs/PLAN.md §4 records as the
-// project's toolchain contract; if the CI gate rejects one, the fix is a bump in
-// this file and nothing else, which is the point of keeping them here.
+# Version catalogue. The pins here are the ones docs/PLAN.md §4 records as the
+# project's toolchain contract; if the CI gate rejects one, the fix is a bump in
+# this file and nothing else, which is the point of keeping them here.
 [versions]
-agp = "9.3.0"
-kotlin = "2.3.21"
-composeBom = "2026.08.00"
-coreKtx = "1.16.0"
-activityCompose = "1.10.1"
-lifecycle = "2.9.1"
-coroutines = "1.10.2"
+agp = "9.1.1"
+kotlin = "2.2.10"
+composeBom = "2024.09.03"
+coreKtx = "1.15.0"
+activityCompose = "1.9.3"
+lifecycle = "2.8.7"
+coroutines = "1.9.0"
 junit = "4.13.2"
-compileSdk = "37"
+compileSdk = "36"
 minSdk = "26"          # ADR-0002: AAudio is API 26+; no OpenSL fallback by design
-targetSdk = "37"
+targetSdk = "36"
 ndk = "28.2.13676358"
 cmake = "3.31.6"
 

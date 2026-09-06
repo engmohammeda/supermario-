@@ -180,15 +180,14 @@ public:
   ~AAudioOut() override { close(); }
 
 private:
-  static int on_error(AAudioStream *stream, void *user, aaudio_result_t error) {
+  static void on_error(AAudioStream *stream, void *user, aaudio_result_t error) {
     (void)stream;
     AAudioOut *self = static_cast<AAudioOut *>(user);
     if (!self)
-      return 0;
+      return;
     self->errors_++;
     MB_LOGW("AAudio error callback: %s", AAudio_convertResultToText(error));
     self->needs_reopen_ = true; /* handled by the next write() on the emu thread */
-    return 0;
   }
 
   AAudioStream *stream_ = nullptr;

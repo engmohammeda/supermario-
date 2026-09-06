@@ -144,7 +144,7 @@
   202 mapper - (...) mapper corrections
   204 mapper - (...) mapper for new dump "64-in-1 [p1].nes"
   208 mapper - (FCEU) "Street Fighter 4 (GOUDER).nes" now playable. (thx Xodnizel)
-  211 mapper - (...) debug mapper code for new dumps "MK2.nes" è "DKC1.nes"
+  211 mapper - (...) debug mapper code for new dumps "MK2.nes" ï¿½ "DKC1.nes"
 
 10.11.03
 

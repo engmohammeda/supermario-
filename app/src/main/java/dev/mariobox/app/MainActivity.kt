@@ -27,9 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.activity.viewModels
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.mariobox.app.ui.GameScreen
 import dev.mariobox.app.ui.LibraryScreen
 import dev.mariobox.app.ui.MarioBoxTheme
@@ -48,7 +48,7 @@ import dev.mariobox.engine.Cores
  * exactly once when the user leaves.
  */
 class MainActivity : ComponentActivity() {
-    private val vm: EmulatorViewModel by viewModel()
+    private val vm: EmulatorViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

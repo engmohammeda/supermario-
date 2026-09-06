@@ -15,7 +15,7 @@ package dev.mariobox.engine
  * parser is the authority for loading, this one is only for display and sorting.
  */
 object INesHeader {
-    const val MAGIC = 0x4E45531F // "NES" followed by 0x1A
+    const val MAGIC = 0x1A53454E // "NES" followed by 0x1A (little-endian: 0x4E, 0x45, 0x53, 0x1A)
 
     data class Info(
         val valid: Boolean,
