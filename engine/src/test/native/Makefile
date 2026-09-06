@@ -30,10 +30,16 @@ else
 endif
 
 # ---- inputs Makefile.common expects --------------------------------------
+# These four variables are the only inputs Makefile.common branches on, so they
+# have to hold *exactly* those values: an inline comment here would become part of
+# the value ("1          " != "1") and silently drop the NTSC filter sources and
+# -DHAVE_NTSC_FILTER. Comments therefore sit on their own lines.
 SOURCE_DIR     := $(CORE_DIR)/src
 LIBRETRO_DIR   := $(CORE_DIR)/libretro
-HAVE_NTSC      := 1          # the NTSC composite filter is a shipped feature
-STATIC_LINKING := 0           # shared object, so libretro-common compat is used
+# The NTSC composite filter is a shipped feature, not an option.
+HAVE_NTSC := 1
+# Shared object, so the libretro-common compat sources are compiled in.
+STATIC_LINKING := 0
 include $(CORE_DIR)/Makefile.common
 
 CC       ?= gcc
@@ -81,12 +87,35 @@ TEST_BIN   := $(BIN)/test_host
 ALL_OBJS   := $(CORE_OBJS) $(BRIDGE_OBJ) $(HOST_OBJS) $(OBJDIR)/test_host.cpp.o
 DEPS       := $(ALL_OBJS:.o=.d)
 
-.PHONY: all run clean sources
+.PHONY: all run clean sources print-build-spec check-source-list
 all: $(TEST_BIN) $(CORE_SO)
 
 sources:
 	@printf '%s\n' $(SOURCES_C) | wc -l
 	@printf '%s\n' $(CORE_SRCS)
+
+# ---- build spec consumed by CMake ----------------------------------------
+# The Android build has to compile exactly what this Makefile compiles, so
+# rather than duplicating 648 paths into a CMakeLists.txt we print them and let
+# tools/gen_cmake_core_list.py commit the answer. The -I/-D juggling here is
+# deliberate: Makefile.common puts an include dir in COREDEFINES and the core
+# needs the libretro-common compat header force-included, so both lists are
+# flattened into the two categories CMake actually cares about.
+print-build-spec:
+	$(Q)for f in $(SOURCES_C) ; do printf 'src\t%s\n' $$f ; done
+	$(Q)printf 'src\t%s\n' $(BRIDGE)/fceumm/mariobox_fceumm_ext.c
+	$(Q)for f in $(INCFLAGS) $(COREDEFINES) ; do \
+	  case $$f in \
+	    -I*) printf 'inc\t%s\n' $${f#-I} ;; \
+	    -D*) printf 'def\t%s\n' $${f#-D} ;; \
+	    *)   printf 'inc\t%s\n' $$f ;; \
+	  esac ; done
+	$(Q)printf 'inc\t%s\n' $(CPP_DIR)
+	$(Q)printf 'inc\t%s\n' $(HOST)
+	$(Q)printf 'force_include\t%s\n' $(LIBRETRO_COMM_DIR)/include/compat/strl.h
+
+check-source-list:
+	$(Q)python3 $(ROOT)/tools/gen_cmake_core_list.py --check
 
 $(CORE_SO): $(CORE_OBJS) $(BRIDGE_OBJ)
 	@mkdir -p $(dir $@)

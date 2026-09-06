@@ -119,7 +119,15 @@ typedef struct mb_cheat {
   int32_t compare;  /* -1 when unused */
 } mb_cheat;
 
-/* Core option descriptor for the settings UI. */
+/* Core option descriptor for the settings UI.
+ *
+ * `values` holds the strings that must be handed back to mb_option_set(); the
+ * core's own option table has a separate display label per value (for FCEUmm:
+ * value "0" is labelled "Auto"), and a settings screen that showed or sent the
+ * wrong half of that pair would silently do nothing. So both are here:
+ * `values[i]` = what to set, `labels[i]` = what to show, and defaults[0] is the
+ * option's *current* value (or its documented default when untouched).
+ */
 typedef struct mb_option {
   uint32_t struct_size;
   char key[64];
@@ -129,6 +137,7 @@ typedef struct mb_option {
   char defaults[16][48];
   int default_index;
   int count;
+  char labels[16][48]; /* display text for values[i], same order, may equal it */
 } mb_option;
 
 /* ---- lifecycle -------------------------------------------------------- */
@@ -147,7 +156,9 @@ int mb_is_paused(const void *handle);
 mb_status mb_set_surface(void *handle, void *native_window);
 mb_status mb_set_surface_size(void *handle, int32_t width, int32_t height);
 void mb_set_video_enabled(void *handle, int enabled);
-/* Copies the most recent emulated frame (RGBA8888, top-left origin) into `out`.
+/* Copies the most recent emulated frame into `out`, as R,G,B,A bytes with A=255,
+ * one row per `pitch` bytes, top-left origin (the host swizzles the core's
+ * little-endian 0x00RRGGBB words so this contract holds for every core).
  * Returns MB_ERR_INVALID if `cap` is too small. Used for save-state art. */
 mb_status mb_copy_frame(void *handle, uint8_t *out, size_t cap, uint32_t *out_w,
                         uint32_t *out_h, uint32_t *out_pitch);
@@ -165,6 +176,12 @@ typedef enum mb_filter_mode {
 } mb_filter_mode;
 void mb_set_render_config(void *handle, int scale_mode, int filter_mode,
                           int scanlines_percent, int overscan_crop, int rotation);
+
+/* ---- audio ------------------------------------------------------------ */
+/* Software gain, 0..1, applied by the platform backend. Readable so a settings
+ * screen can show the truth instead of its own copy. */
+void mb_set_audio_volume(void *handle, float volume);
+float mb_get_audio_volume(const void *handle);
 
 /* ---- input ------------------------------------------------------------ */
 /* Bit order matches RETRO_DEVICE_ID_JOYPAD_*:

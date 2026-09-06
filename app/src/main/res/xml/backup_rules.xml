@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nothing to back up: ROM copies and save states are app-private files whose
+     restoration by the OS would silently change what a user's save means. -->
+<full-backup-content />

@@ -61,6 +61,11 @@ public:
   mb_status set_surface(void *native_window);
   mb_status set_surface_size(int32_t w, int32_t h);
   void set_video_enabled(bool on);
+
+  /* Gain applied in the audio backend (0..1). Stored on the host so a device that
+   * is reopened after a routing change keeps the user's setting. */
+  void set_audio_volume(float v);
+  float audio_volume() const { return audio_volume_; }
   void set_render_config(const RenderConfig &cfg);
   mb_status copy_frame(uint8_t *out, size_t cap, uint32_t *w, uint32_t *h, uint32_t *pitch);
 
@@ -233,6 +238,7 @@ private:
 
   Surface *surface_ = nullptr;
   AudioOut *audio_ = nullptr;
+  float audio_volume_ = 1.f;
   RenderConfig render_cfg_;
 
   /* stats */

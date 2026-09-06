@@ -91,6 +91,18 @@ mb_status mb_set_surface_size(void *handle, int32_t w, int32_t h) {
   MB_GUARD(handle);
   return _h.set_surface_size(w, h);
 }
+void mb_set_audio_volume(void *handle, float volume) {
+  if (!handle)
+    return;
+  static_cast<mb_handle *>(handle)->host.set_audio_volume(volume);
+}
+
+float mb_get_audio_volume(const void *handle) {
+  if (!handle)
+    return 1.f;
+  return static_cast<const mb_handle *>(handle)->host.audio_volume();
+}
+
 void mb_set_video_enabled(void *handle, int enabled) {
   if (!handle)
     return;

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English mirror of values/strings.xml. Keep the two lists in lockstep: a
+     missing key is a crash-free fallback to Arabic, but a wrong placeholder count
+     is a runtime crash, and CI's lint gate only catches the latter. -->
+<resources>
+    <string name="app_name">MarioBox</string>
+    <string name="library_title">Library</string>
+    <string name="library_empty">No cartridges yet. Tap “Import ROM” and pick a .nes file on your device.</string>
+    <string name="library_import">Import ROM</string>
+    <string name="library_search">Search by name</string>
+    <string name="library_play">Play</string>
+    <string name="library_remove">Remove from library</string>
+    <string name="library_added">Added: %1$s</string>
+    <string name="library_failed_copy">Could not copy the file into app storage</string>
+    <string name="legal_notice">A NES/Famicom emulator. It ships no ROMs; use files you own or that are licensed for sharing.</string>
+    <string name="legal_ok">Got it</string>
+    <string name="game_paused">Paused</string>
+    <string name="game_resumed">Resumed</string>
+    <string name="hud_fps">%1$.1f fps · %2$.0f%% speed</string>
+    <string name="hud_underruns">Audio underruns: %1$d</string>
+    <string name="hud_rewind">Rewind available: %1$d frames</string>
+    <string name="toast_load_failed">Could not start: %1$s</string>
+    <string name="core_missing">The emulator core is missing from this build — reinstall</string>
+    <string name="btn_a">A</string>
+    <string name="btn_b">B</string>
+    <string name="btn_start">Start</string>
+    <string name="btn_select">Select</string>
+    <string name="btn_turbo">Turbo</string>
+    <string name="states_title">Save states</string>
+    <string name="states_save">Save</string>
+    <string name="states_load">Load</string>
+    <string name="states_quick_save">Quick save</string>
+    <string name="states_quick_load">Quick load</string>
+    <string name="states_empty">Empty</string>
+    <string name="states_saved_at">frame %1$d</string>
+    <string name="battery_flush">Flush battery RAM now</string>
+    <string name="battery_flushed">Battery RAM saved (%1$d bytes)</string>
+    <string name="cheats_title">Cheats</string>
+    <string name="cheats_add">Add code</string>
+    <string name="cheats_code">Game Genie/Par code, or RAW:address=value</string>
+    <string name="cheats_desc">Description</string>
+    <string name="cheats_enabled">Enabled</string>
+    <string name="cheats_decode_ok">decodes to %1$s = %2$d</string>
+    <string name="cheats_decode_bad">invalid code</string>
+    <string name="cheats_live">from core: %1$s</string>
+    <string name="cheats_none">No codes. Add a Game Genie code with the button below.</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_video">Video</string>
+    <string name="settings_scale">Scaling</string>
+    <string name="settings_filter">Filtering</string>
+    <string name="settings_scanlines">Scanlines (%)</string>
+    <string name="settings_overscan">Overscan crop (%)</string>
+    <string name="settings_rotation">Rotation</string>
+    <string name="settings_audio">Audio</string>
+    <string name="settings_volume">Volume</string>
+    <string name="settings_emulation">Emulation</string>
+    <string name="settings_rewind">Rewind length (seconds)</string>
+    <string name="settings_runahead">Run-ahead (lower latency)</string>
+    <string name="settings_sram">Battery RAM</string>
+    <string name="settings_core_options">Core options</string>
+    <string name="settings_restarts">Some options only apply after the ROM restarts</string>
+    <string name="settings_power_cycle">Restart ROM</string>
+    <string name="settings_apply">Apply</string>
+    <string name="settings_layout">Button layout</string>
+    <string name="close">Close</string>
+    <string name="back">Back</string>
+    <string name="layout_classic">Classic (pad left)</string>
+    <string name="layout_mirrored">Mirrored (pad right)</string>
+    <string name="layout_one_hand">One hand (right)</string>
+</resources>

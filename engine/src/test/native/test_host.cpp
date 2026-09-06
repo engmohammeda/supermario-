@@ -244,6 +244,20 @@ int main(int argc, char **argv) {
   check(forward == replay && forward.size() == 6,
         "replaying from a save state renders identical pixels");
 
+  section("audio volume");
+  {
+    /* Gain is stored on the host, not the device, so a routing change that reopens
+     * the stream must not silently reset the user's volume. */
+    mb_set_audio_volume(h, 0.5f);
+    float got = mb_get_audio_volume(h);
+    check(got > 0.499f && got < 0.501f, "audio gain round-trips through the host");
+    mb_set_audio_volume(h, 4.f);
+    check(mb_get_audio_volume(h) <= 1.0f, "gain is clamped to unity");
+    mb_set_audio_volume(h, -2.f);
+    check(mb_get_audio_volume(h) >= 0.f, "negative gain clamps to silence");
+    mb_set_audio_volume(h, 1.f);
+  }
+
   section("core options");
   int nopt = int(mb_option_count(h));
   check(nopt > 0, "the core published its option table");
@@ -262,6 +276,21 @@ int main(int argc, char **argv) {
       check(gs == MB_OK && val[0],
             "an untouched option still reads back the core's documented default");
       printf("      %s = '%s'\n", o0.key, val);
+      /* The settings screen shows labels[] and sends values[]. If those two were
+       * ever conflated -- which is what the single-array ABI invited -- picking an
+       * entry in the UI would look applied and do nothing, so the round trip has
+       * to be asserted with the string the UI would actually send. */
+      if (o0.count > 1 && o0.values[0][0] && strcmp(val, o0.values[1]) != 0) {
+        check(mb_option_set(h, o0.key, o0.values[1]) == MB_OK,
+              "the label/value split leaves a settable value string");
+        char back[64] = {0};
+        check(mb_option_get(h, o0.key, back, sizeof(back)) == MB_OK && !strcmp(back, o0.values[1]),
+              "a value taken from option_info().values round-trips through set");
+        printf("      %s: values[1]='%s' labels[1]='%s'\n", o0.key, o0.values[1], o0.labels[1]);
+        mb_option_set(h, o0.key, val); /* restore */
+      } else {
+        check(false, "option 0 exposes more than one value for the round-trip test");
+      }
     }
   }
   check(mb_option_set(h, "fceumm_palette", "grayscale") == MB_OK, "an option can be set");

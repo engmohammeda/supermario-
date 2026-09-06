@@ -191,6 +191,16 @@ mb_status EmuHost::set_surface_size(int32_t w, int32_t h) {
 
 void EmuHost::set_video_enabled(bool on) { video_enabled_ = on; }
 
+void EmuHost::set_audio_volume(float v) {
+  if (!(v >= 0.f)) /* also catches NaN */
+    v = 0.f;
+  if (v > 1.f)
+    v = 1.f;
+  audio_volume_ = v;
+  if (audio_)
+    audio_->set_volume(v);
+}
+
 void EmuHost::set_render_config(const RenderConfig &cfg) {
   render_cfg_ = cfg;
   if (surface_)
@@ -755,6 +765,8 @@ mb_status EmuHost::option_info(int32_t index, mb_option *out) const {
              options_[size_t(index)].second.c_str());
     snprintf(out->values[0], sizeof(out->values[0]), "%s",
              options_[size_t(index)].second.c_str());
+    snprintf(out->labels[0], sizeof(out->labels[0]), "%s",
+             options_[size_t(index)].second.c_str());
     out->count = 1;
     return MB_OK;
   }
@@ -767,14 +779,15 @@ mb_status EmuHost::option_info(int32_t index, mb_option *out) const {
   snprintf(out->key, sizeof(out->key), "%s", d.key ? d.key : "");
   snprintf(out->desc, sizeof(out->desc), "%s", d.desc ? d.desc : (d.info ? d.info : ""));
   for (int i = 0; i < RETRO_NUM_CORE_OPTION_VALUES_MAX && i < 16 && d.values[i].value; i++) {
-    snprintf(out->values[i], sizeof(out->values[i]), "%s",
+    snprintf(out->values[i], sizeof(out->values[i]), "%s", d.values[i].value);
+    snprintf(out->labels[i], sizeof(out->labels[i]), "%s",
              d.values[i].label ? d.values[i].label : d.values[i].value);
     if (d.default_value && !strcmp(d.values[i].value, d.default_value))
       out->default_index = i;
   }
   while (out->count < 16 && out->values[out->count][0])
     out->count++;
-  char cur[64];
+  char cur[sizeof(out->defaults[0])];
   if (option_get(out->key, cur, sizeof(cur)) == MB_OK && cur[0])
     snprintf(out->defaults[0], sizeof(out->defaults[0]), "%s", cur);
   else
@@ -890,6 +903,11 @@ void EmuHost::fill_frame_rgba(const void *src, unsigned w, unsigned h, size_t pi
   const uint8_t *s = static_cast<const uint8_t *>(src);
   switch (pixel_format_) {
   case RETRO_PIXEL_FORMAT_XRGB8888: {
+    /* libretro defines this format as the 32-bit *word* 0x00RRGGBB, so on a little
+     * endian machine the incoming bytes are B,G,R,X while every consumer of
+     * frame_ -- the GLES2 sampler, the Kotlin Bitmap path, the PNG in a save-state
+     * header -- reads R,G,B,A. Swap while fixing up alpha: doing it here keeps the
+     * ABI's documented byte order true, which is worth one pass over 61k pixels. */
     size_t row = size_t(w) * 4u;
     if (pitch == row) {
       memcpy(frame_.data(), s, row * h);
@@ -898,8 +916,12 @@ void EmuHost::fill_frame_rgba(const void *src, unsigned w, unsigned h, size_t pi
         memcpy(frame_.data() + size_t(y) * row, s + size_t(y) * pitch, row);
     }
     uint8_t *p = frame_.data();
-    for (size_t i = 3; i < frame_.size(); i += 4)
-      p[i] = 0xFF; /* XRGB carries no alpha; our sampler expects opaque */
+    for (size_t i = 0; i + 3 < frame_.size(); i += 4) {
+      const uint8_t b = p[i];
+      p[i] = p[i + 2];
+      p[i + 2] = b;
+      p[i + 3] = 0xFF; /* XRGB carries no alpha; our sampler expects opaque */
+    }
     break;
   }
   case RETRO_PIXEL_FORMAT_RGB565: {
@@ -1293,8 +1315,10 @@ mb_status EmuHost::do_load() {
         audio_destroy(audio_);
         audio_ = nullptr;
       } else {
+        audio_->set_volume(audio_volume_);
         audio_->start();
-        MB_LOGI("audio backend %s @ %u Hz", audio_->backend_name(), sample_rate_);
+        MB_LOGI("audio backend %s @ %u Hz, gain %.2f", audio_->backend_name(), sample_rate_,
+                audio_volume_);
       }
     }
   } else {

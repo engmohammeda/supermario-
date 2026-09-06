@@ -1,0 +1,132 @@
+# MARIOBOX build gate.
+#
+# Two jobs, in the order that fails fastest:
+#
+#   native  -- the C++ host and the vendored core, built and run against a generated
+#              test ROM on plain Linux with gcc. This is the job that proves the
+#              emulator half of the project works without an Android SDK in sight
+#              (docs/PLAN.md §1 says the sandbox cannot build an APK; the same
+#              reasoning is why the engine gets a host-side gate here).
+#   android -- the Gradle build: unit tests, debug APK, release APK, lint.
+#
+# No AAB, no Telegram: this app is sideloaded, so a universal APK is the artifact and
+# a bundle would only add a signing step nobody uses (see docs/PLAN.md "التجاوزات").
+
+name: MARIOBOX Android Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NDK_VERSION: 28.2.13676358
+  SDK_PLATFORM: android-37
+  BUILD_TOOLS: 37.0.0
+
+jobs:
+  native:
+    name: Host tests (N1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential zlib1g-dev python3
+          gcc --version
+          nproc
+
+      - name: Core source list matches the vendored makefile fragment
+        run: make -C engine/src/test/native check-source-list
+
+      - name: Build host + core
+        run: make -C engine/src/test/native -j"$(nproc)"
+
+      - name: Run the conformance suite
+        # 600+ frames of a generated probe ROM, save states, rewind, SRAM, cheat
+        # decoders, core options -- the same C ABI the JNI bridge calls.
+        run: make -C engine/src/test/native run
+
+      - name: Build with CMake too (the Android half's configure path)
+        run: |
+          cmake -S engine/src/main/cpp -B build/cmake-host -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/cmake-host -j"$(nproc)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: host-test-output
+          path: build/test-out.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  android:
+    name: APK build (N4)
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install platform, build-tools and NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;${{ env.SDK_PLATFORM }}" "build-tools;${{ env.BUILD_TOOLS }}" "ndk;${{ env.NDK_VERSION }}" "cmake;3.31.6"
+
+      - name: Gradle unit tests (N2)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          arguments: testDebugUnitTest
+
+      - name: Assemble debug APK
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+          arguments: assembleDebug --stacktrace
+
+      - name: Assemble release APK (unsigned)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+          arguments: assembleRelease --stacktrace
+
+      - name: Lint (informational)
+        continue-on-error: true
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+          arguments: lintDebug
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/debug/app-debug.apk out/MarioBox-debug.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk out/MarioBox-release-unsigned.apk || \
+            cp app/build/outputs/apk/release/app-release.apk out/MarioBox-release.apk
+          sha256sum out/*.apk > out/SHA256SUMS || true
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MarioBox-apk
+          path: out/*
+          retention-days: 14
