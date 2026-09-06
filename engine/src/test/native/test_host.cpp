@@ -9,6 +9,7 @@
  * Usage: test_host --core <libmbcore_fceumm.so> --rom <mbprobe.nes> --work <dir>
  */
 #include <algorithm>
+#include <cmath>
 #include <ctime>
 #include <cstdio>
 #include <cstring>
@@ -17,6 +18,7 @@
 #include <vector>
 
 #include "mb_abi.h"
+#include "render_plan.h"
 #include "state_store.h"
 
 /* ------------------------------------------------------------ tiny harness */
@@ -243,6 +245,83 @@ int main(int argc, char **argv) {
   }
   check(forward == replay && forward.size() == 6,
         "replaying from a save state renders identical pixels");
+
+  section("presentation plan");
+  {
+    /* Scaling, overscan, rotation and scanline period are pure maths in
+     * platform/common/render_plan.cpp -- the same code the EGL renderer calls, and
+     * the reason the renderer itself is allowed to be 200 lines of nothing. */
+    using namespace mb;
+    RenderConfig fit{};
+    fit.scale_mode = MB_SCALE_FIT;
+    PresentPlan p = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, fit);
+    check(p.valid && p.viewport.width == 1080 && p.viewport.height == 810 && p.viewport.y == 675,
+          "fit letterboxes a 4:3 frame inside a portrait window");
+
+    RenderConfig integer{};
+    integer.scale_mode = MB_SCALE_INTEGER;
+    PresentPlan pi = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, integer);
+    check(pi.viewport.height % 240 == 0 && pi.scale_is_integer && pi.viewport.height < p.viewport.height,
+          "integer scale never exceeds the fit scale and keeps whole source rows");
+
+    RenderConfig stretch{};
+    stretch.scale_mode = MB_SCALE_STRETCH;
+    PresentPlan ps = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, stretch);
+    check(ps.viewport.width == 1080 && ps.viewport.height == 2160 && ps.u0 == 0.f && ps.u1 == 1.f,
+          "stretch fills the window and samples the whole frame");
+
+    RenderConfig fill{};
+    fill.scale_mode = MB_SCALE_FILL_CROP;
+    PresentPlan pf = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, fill);
+    check(pf.viewport.width == 1080 && pf.viewport.height == 2160 && pf.u1 - pf.u0 < 1.f &&
+              pf.crop_x > 0,
+          "fill-and-crop covers the window by trimming the sampled rect, not by squashing");
+
+    RenderConfig over{};
+    over.scale_mode = MB_SCALE_FIT;
+    over.overscan_crop = 8;
+    PresentPlan po = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, over);
+    check(std::fabs(po.u0 - 10.0 / 256.0) < 1e-4 && std::fabs(po.v0 - 9.0 / 240.0) < 1e-4 &&
+              po.visible_rows == 222.f && po.visible_cols == 236.f,
+          "overscan crop is symmetric and measured in source pixels");
+    check(po.u1 - po.u0 < 1.f && po.v1 - po.v0 < 1.f, "a cropped frame samples less than all of it");
+
+    RenderConfig rot{};
+    rot.scale_mode = MB_SCALE_FIT;
+    rot.rotation = 90;
+    PresentPlan pr = make_plan(2160, 1080, 256, 240, 4.0 / 3.0, rot);
+    check(pr.rotation_quarters == 1 && pr.viewport.width == 810 && pr.viewport.height == 1080 &&
+              pr.viewport.x == 675,
+          "a 90 degree rotation swaps the axes and stays centred in the real window");
+
+    RenderConfig scan{};
+    scan.scale_mode = MB_SCALE_INTEGER;
+    scan.scanlines_percent = 35;
+    PresentPlan psl = make_plan(1024, 768, 256, 240, 4.0 / 3.0, scan);
+    check(std::fabs(psl.scanline_amount - 0.35f) < 1e-4 && std::fabs(psl.row_height_px - 3.f) < 1e-3,
+          "one scanline period is exactly one source row of the integer scale");
+
+    PresentPlan pn = make_plan(0, 0, 256, 240, 4.0 / 3.0, fit);
+    check(!pn.valid, "a zero-sized window produces no plan instead of a divide by zero");
+
+    /* No reported aspect means square pixels: 256x240 in a 512x384 window should be
+     * limited by height, giving 384 * 256/240 wide. */
+    PresentPlan psql = make_plan(512, 384, 256, 240, 0.0, fit);
+    check(psql.viewport.height == 384 && std::abs(psql.viewport.width - 410) <= 1,
+          "aspect_ratio 0 falls back to square pixels rather than 4:3");
+
+    /* crop_pixels owns the clamp: out-of-range values are pulled back to 25% of each
+     * axis, so a stale or hand-edited preference cannot blank the picture. */
+    RenderConfig insane{};
+    insane.scale_mode = MB_SCALE_FIT;
+    insane.overscan_crop = 200;
+    PresentPlan pin = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, insane);
+    int32_t cx = 0, cy = 0;
+    crop_pixels(256, 240, 200, &cx, &cy);
+    check(cx == 32 && cy == 30, "overscan is clamped to 25% of each axis");
+    check(pin.visible_cols == 192 && pin.visible_rows == 180 && pin.u1 > pin.u0 && pin.v1 > pin.v0,
+          "the plan stays a non-degenerate sampled rectangle at the clamp");
+  }
 
   section("audio volume");
   {

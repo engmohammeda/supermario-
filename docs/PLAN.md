@@ -298,3 +298,62 @@ core options: palette, ntsc preset, vsync, run-ahead)، تحكم، حفظ (مس�
 4. `workflow` نشر مطابق لفكرتك (semver + ملاحظات مصنّفة + تلجرام + SHA256 + ملخص المهام) باسم التطبيق.
 5. توثيق: README (مزايا/التقاط/بناء/إسهام)، `docs/{ARCHITECTURE,CONTROLS,CHEATS,MARIO_MAP,QA,BUILD}`.
 6. إصدار v1.0.0 على GitHub Releases مع APK جاهز للتثبيت.
+
+
+---
+
+## 12. سجلّ التنفيذ والتجاوزات (ما تقرّر أثناء البناء ولم يكن في الخطة)
+
+كل بند هنا إمّا **تجاوز لخطة مكتوبة أعلاه** أو **حقيقة اكتُشفَت بالبناء** وتستحقّ أن تُقرأ
+قبل أن يغيّر أحدٌ شيئًا. لا شيء مبطَّن: ما لم يُنفَّذ مذكور صراحةً في `docs/QA.md`.
+
+### تجاوزات مقصودة
+
+1. **وحدتا Gradle بدلًا من تسع** (`:engine`, `:app`). السبب عمليٌّ لا معماري: توليد مشروع
+   من 9 وحدات يتطلّب تنزيل NDK ومصادفات شبكة، بينما الهدف الأول «APK يعمل على جهاز».
+   Room/DataStore/Hilt/Paging/Navigation مؤجَّلة، وواجهة `Prefs`/`Library` مكتوبة بحيث
+   الترحيل لاحقًا لا يغيّر نداءات الاستدعاء.
+2. **DataStore + Room → `SharedPreferences` + ملف فهرس JSON** (`app/.../Prefs.kt`,
+   `Library.kt`). النتيجة نفسها للمستخدم؛ أقلّ اعتماديات، أقلّ خطر كسر في توليد الشيفرة.
+3. **JUnit5 في `:core:common` → JUnit4 في اختبارات الوحدتين**. نفس الغرض (اختبارات JVM
+   خالصة بلا Robolectric) بأقلّ سطور بناء.
+4. **لا AAB ولا Telegram** — APK موحَّد + SHA256، لأن التوزيع sideload. (بند §7 عُدِّل accordingly.)
+5. **ملف CI في `.ci/android-build.yml`** لا في `.github/workflows/`: صلاحية الدفع الحالية
+   (GitHub App) ممنوعة من إنشاء/تعديل مسارات `workflow`. الأمر في `docs/BUILD.md §3`.
+6. **`nescc` غير مبنيّ**: غطاؤه 7 مابرات لا تكفي عائلة ماريو، وغلو-ه في libretro لا يُترجم.
+   `MB_CORE_NESCC=OFF` افتراضًا، والتفعيل **فشل صاخب** في CMake بدل نواة نصف مبنية.
+
+### حقائق اكتشفها البناء (احذروها)
+
+* **`HAVE_NTSC := 1` يحمل معنى مزدوجًا**: هو ما يُدخل `src/ntsc/nes_ntsc.c` **و**
+  `-DHAVE_NTSC_FILTER`. أي تعديل يفسد قيمته (مثل `# comment` في نفس السطر!) يُسقط
+  المرشّحComposite بصمت؛ اكتشاف ذلك كان عبر جدول خيارات النواة لا عبر خطأ ترجمة.
+* **GCC يدمج `sin()/cos()` في `src/nsf.c` إلى `sincos()`**: glibc تصدّره، bionic القديمة لا.
+  لذا `-fno-builtin-sincos -fno-builtin-sincosf` إلزامي، وإلا `dlopen` يفشل على الجهاز.
+* **`retro_set_cheat_state` و`retro_get_perf_counter` غير موجودين**؛ الغشّات تحتاج جسرًا
+  داخليًا (`bridge/fceumm/mariobox_fceumm_ext.c` + `dlsym`)، والقراءات الحية تمرّ عبر
+  `mb_peek/mb_poke` فوق خرائط `RETRO_ENVIRONMENT_SET_MEMORY_MAPS`.
+* **جدول `MemoryMap` الداخلي في FCEUmm لا يغطي `$0000-$07FF`** (work RAM) — لذا الغشّات
+  تُطبَّق داخل النواة لا من المضيف فقط، وإلا كانت «تعمل نظريًا».
+* **`HAVE_NO_NGZI_COMPRESSION` تُعطّل NGZIP كلّه** لا gzip فقط؛ إن فُهم خطأ تفقدون
+  ضغط حالات الحفظ كلّه.
+* **تنسيق البكسل `XRGB8888` كلمةٌ لا بايتات**: little-endian ⇒ `B,G,R,X`. أي `memcpy`
+  مباشر إلى RGBA يقلب الأحمر بالأزرق — لذلك يقلب المضيف القناع مرّة واحدة
+  (`fill_frame_rgba`) ويستهلكه GL و`Bitmap` معًا.
+* **`Bitmap.copyPixelsFromBuffer` ترفض缓冲区 غير مباشرة**: نبني `IntArray` ونستخدم
+  `Bitmap.createBitmap` (مسار المصغّرات).
+* **FCEUmm تحرّر مصفوفة خيارات النواة قبل نهاية `SET_CORE_OPTIONS`**: النسخ العميق في
+  المضيف ليس رفاهية — ASan رآه و`-O1` أخفاه.
+* **بعد استعادة SRAM لا يُستدعى `retro_reset`**: إعادة الضبط تُعيد تهيئة ذاكرة البطارية
+  فتمحو ما استُعيد للتوّ.
+* **`SliderRow`/`SegmentedRow` داخل `Row`/`items` يجب أن تكون `Column`**: وإلا فالتماس
+  يبتلع العرض كلّه. و`clickable` لا يُطلق أثناء الاستمرار، لذا زرّ A المستمر
+  يُقرأ بـ `awaitEachGesture` (طويل=تربو).
+* **دوال ABI لا تُخترع**: `mb_event_user` لم تكن موجودة؛ أي تمرير مؤشّر مستخدم عبر
+  `postUserMessage` يجب أن يُقرأ من جادبول/مفاتيح في نفس الـ callback أو يُرفض.
+
+### ما لم يُثبَت بعد (ولا يجوز ادّعاؤه)
+
+`platform/android/*.cpp` لم تُترجم أبدًا بمترجم أندرويد (لا NDK في بيئة التطوير) — تُثبَت في
+CI؛ Kotlin/Compose لم يره `javac` قطّ؛ وAAudio لم يُقابَل برأسه الحقيقي. القائمة التشغيلية
+المطوّلة للعشر ميزات في `docs/QA.md`، وكلها تنتظر جهازًا فعليًا.

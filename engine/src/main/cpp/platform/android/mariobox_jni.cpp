@@ -134,9 +134,12 @@ void push_event(void *user, uint32_t event_id, const char *text) {
   bool attached_here = false;
   jint rc = g_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
   if (rc == JNI_EDETACHED) {
+    /* Android's jni.h declares AttachCurrentThread(JNIEnv**, void*); a host-side
+     * syntax check against OpenJDK's header sees (void**, void*) and complains here
+     * and nowhere else -- that error is a false positive, do not "fix" the cast. */
     JavaVMAttachArgs args;
     args.version = JNI_VERSION_1_6;
-    args.name = "mariobox-emu";
+    args.name = const_cast<char *>("mariobox-emu");
     args.group = nullptr;
     if (g_vm->AttachCurrentThread(&env, &args) != 0)
       return;
@@ -544,7 +547,11 @@ MB_JNI(MbNative, nativeMemRead)(JNIEnv *env, jclass, jlong hp, jint address, jin
   void *h = handle(hp);
   if (!h || len <= 0 || len > (1 << 20))
     return nullptr;
-  std::vector<uint8_t> buf(size_t(len));
+  /* resize(), not `buf(size_t(len))`: the parenthesised form is a function
+   * declaration to the parser (most vexing parse) and the braced form becomes a
+   * one-element initializer list. Both are silent-ish disasters in a memory view. */
+  std::vector<uint8_t> buf;
+  buf.resize(size_t(len));
   if (mb_mem_read(h, uint32_t(address), buf.data(), uint32_t(len)) != MB_OK)
     return nullptr;
   jbyteArray out = env->NewByteArray(len);
@@ -558,7 +565,8 @@ MB_JNI(MbNative, nativeMemWrite)(JNIEnv *env, jclass, jlong hp, jint address, jb
   if (!h || !bytes)
     return MB_ERR_INVALID;
   jsize n = env->GetArrayLength(bytes);
-  std::vector<uint8_t> buf(size_t(n));
+  std::vector<uint8_t> buf;
+  buf.resize(size_t(n));
   env->GetByteArrayRegion(bytes, 0, n, reinterpret_cast<jbyte *>(buf.data()));
   return status(env, h, mb_mem_write(h, uint32_t(address), buf.data(), uint32_t(n)));
 }

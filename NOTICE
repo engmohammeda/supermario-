@@ -1,0 +1,27 @@
+MarioBox — notices
+==================
+
+Copyright (C) 2026 MarioBox contributors.
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version. See LICENSE.
+
+Bundled third-party work
+------------------------
+* FCEUmm Next (libretro core) — engine/src/main/cpp/third_party/fceumm_next
+  Copyright (C) the FCEUmm / FCEUX authors, GPL-2.0-only. Vendored unmodified;
+  its own `Copying` and `Authors` files apply. Our additions that make it loadable
+  as a shared object live in engine/src/main/cpp/bridge/fceumm.
+* nescc_emu — engine/src/main/cpp/third_party/nescc, MIT. Vendored as a design
+  reference; not part of any shipped build.
+* libretro headers and libretro-common — within the vendored core tree, MIT.
+* zlib — provided by the Android platform; used only when the build finds it
+  (MB_HAVE_ZLIB) to compress save states.
+
+The application code (engine/src/main/cpp/host, engine/src/main/cpp/platform,
+engine/src/main/java, app/src) is GPL-3.0-or-later, which is compatible with the
+GPL-2.0 core. Source for everything above is this repository.
+
+No game ROMs, BIOS images, or Nintendo-owned assets are included, referenced as
+files, or distributed with this project.

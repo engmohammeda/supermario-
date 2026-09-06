@@ -54,7 +54,7 @@ CORE_CFLAGS := $(DEPFLAGS) $(OPT) -g -fPIC -std=gnu11 -w -D__LIBRETRO__ $(COREDE
                -I$(CORE_DIR) -include compat/strl.h \
                -fno-builtin-sincos -fno-builtin-sincosf
 LIBRETRO_COMM_DIR := $(LIBRETRO_DIR)/libretro-common
-HOST_INCLUDES := -I$(CPP_DIR) -I$(HOST) -I$(LIBRETRO_COMM_DIR)/include
+HOST_INCLUDES := -I$(CPP_DIR) -I$(HOST) -I$(CPP_DIR)/platform/common -I$(LIBRETRO_COMM_DIR)/include
 DEPFLAGS := -MMD -MP
 CXXFLAGS := $(DEPFLAGS) -std=gnu++17 $(OPT) -g -Wall -Wextra -Wno-unused-parameter \
             $(HOST_INCLUDES) -pthread
@@ -81,7 +81,7 @@ LDFLAGS  := -pthread -ldl $(LDFLAGS_ZLIB)
 CORE_SRCS  := $(SOURCES_C)
 CORE_OBJS  := $(patsubst /%.c,$(OBJDIR)/core/%.o,$(CORE_SRCS))
 BRIDGE_OBJ := $(OBJDIR)/bridge/mariobox_fceumm_ext.c.o
-HOST_SRCS  := $(wildcard $(HOST)/*.cpp) $(PLATFORM)/stub/platform_stub.cpp
+HOST_SRCS  := $(wildcard $(HOST)/*.cpp) $(PLATFORM)/stub/platform_stub.cpp $(PLATFORM)/common/render_plan.cpp
 HOST_OBJS  := $(patsubst $(ROOT)/%.cpp,$(OBJDIR)/host/%.cpp.o,$(HOST_SRCS))
 TEST_BIN   := $(BIN)/test_host
 ALL_OBJS   := $(CORE_OBJS) $(BRIDGE_OBJ) $(HOST_OBJS) $(OBJDIR)/test_host.cpp.o
