@@ -79,4 +79,19 @@
     <string name="layout_classic">كلاسيكي (dpad يسار)</string>
     <string name="layout_mirrored">معكوس (dpad يمين)</string>
     <string name="layout_one_hand">يد واحدة (يمين)</string>
+    <string name="load_failed_generic">تعذّر تحميل الروم.</string>
+    <string name="surface_failed">تعذّر إرفاق سطح العرض: %1$s</string>
+    <string name="rewind_failed">لا رجوع أكثر: %1$s</string>
+    <string name="battery_failed">تعذّرت كتابة ذاكرة البطارية: %1$s</string>
+    <string name="states_saved">حُفظت الحالة في %1$s</string>
+    <string name="states_save_failed">فشل حفظ الحالة: %1$s</string>
+    <string name="states_empty_slot">الخانة %1$d فارغة</string>
+    <string name="states_loaded">تم تحميل %1$s</string>
+    <string name="states_load_failed">فشل تحميل الحالة: %1$s</string>
+    <string name="states_quick_saved">حُفظت الخانة السريعة</string>
+    <string name="states_quick_failed">فشل الحفظ السريع</string>
+    <string name="cheats_rejected">النواة رفضت الغشّة: %1$s</string>
+    <string name="option_failed">تعذّر ضبط الخيار: %1$s</string>
+    <string name="settings_overlay">طبقة الأزرار</string>
+    <string name="settings_autosave">حفظ ذاكرة البطارية تلقائيًا</string>
 </resources>

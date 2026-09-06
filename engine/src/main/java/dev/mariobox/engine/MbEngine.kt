@@ -269,7 +269,11 @@ class MbEngine {
                 }
             }
         }
-        return Bitmap.createBitmap(pixels, ow, oh, Bitmap.Config.ARGB_8888)
+        // createBitmap(int[], ...) is a newer overload than this module's minSdk, and
+        // setPixels on a plain allocate-and-fill bitmap is both API 1 and obvious.
+        val out = Bitmap.createBitmap(ow, oh, Bitmap.Config.ARGB_8888)
+        out.setPixels(pixels, 0, ow, 0, 0, ow, oh)
+        return out
     }
 
     // ---------------------------------------------------------------- stats

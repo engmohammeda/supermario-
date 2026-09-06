@@ -67,4 +67,19 @@
     <string name="layout_classic">Classic (pad left)</string>
     <string name="layout_mirrored">Mirrored (pad right)</string>
     <string name="layout_one_hand">One hand (right)</string>
+    <string name="load_failed_generic">Could not load the ROM.</string>
+    <string name="surface_failed">Could not attach the display surface: %1$s</string>
+    <string name="rewind_failed">Nothing left to rewind: %1$s</string>
+    <string name="battery_failed">Could not write battery RAM: %1$s</string>
+    <string name="states_saved">State saved to %1$s</string>
+    <string name="states_save_failed">Saving failed: %1$s</string>
+    <string name="states_empty_slot">Slot %1$d is empty</string>
+    <string name="states_loaded">Loaded %1$s</string>
+    <string name="states_load_failed">Loading the state failed: %1$s</string>
+    <string name="states_quick_saved">Quick slot saved</string>
+    <string name="states_quick_failed">Quick save failed</string>
+    <string name="cheats_rejected">The core rejected that cheat: %1$s</string>
+    <string name="option_failed">Could not set that option: %1$s</string>
+    <string name="settings_overlay">Button overlay</string>
+    <string name="settings_autosave">Save battery RAM automatically</string>
 </resources>

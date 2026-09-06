@@ -351,7 +351,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
             }
             withContext(Dispatchers.Main) {
                 toast = if (rc == MbStatus.OK) s(R.string.states_saved, slotName(index))
-                else s(R.string.states_save_failed, MbStatus.describe(rc, engine.lastError()))"
+                else s(R.string.states_save_failed, MbStatus.describe(rc, engine.lastError()))
             }
         }
     }
@@ -367,7 +367,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
             val rc = engine.loadState(f.absolutePath)
             withContext(Dispatchers.Main) {
                 toast = if (rc == MbStatus.OK) s(R.string.states_loaded, slotName(index))
-                else s(R.string.states_load_failed, MbStatus.describe(rc, engine.lastError()))"
+                else s(R.string.states_load_failed, MbStatus.describe(rc, engine.lastError()))
                 paused = engine.isPaused
             }
         }
