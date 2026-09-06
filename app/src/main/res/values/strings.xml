@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- العربية هي الوضع الافتراضي (docs/PLAN.md §5.9): الواجهة كلها RTL والنسخة
+     الإنجليزية في values-en. كل نص في المستودع يمر من هنا، لا سلاسل في الكود. -->
+<resources>
+    <string name="app_name">ماريوبوكس</string>
+
+    <!-- المكتبة -->
+    <string name="library_title">المكتبة</string>
+    <string name="library_empty">لا رواحل بعد. اضغط «استيراد روم» واختر ملف ‎.nes‎ من جهازك.</string>
+    <string name="library_import">استيراد روم</string>
+    <string name="library_search">ابحث بالاسم</string>
+    <string name="library_play">ابدأ اللعب</string>
+    <string name="library_remove">أزل من المكتبة</string>
+    <string name="library_added">أُضيف: %1$s</string>
+    <string name="library_failed_copy">تعذّر نسخ الملف إلى مساحة التطبيق</string>
+    <string name="legal_notice">مشغّل لأجهزة NES/Famicom. لا يتضمّن أي رواية أو لعبة؛ استخدم ملفات تملكها أو مأذونًا بنشرها.</string>
+    <string name="legal_ok">فهمت</string>
+
+    <!-- أثناء اللعب -->
+    <string name="game_paused">متوقف</string>
+    <string name="game_resumed">متابعة</string>
+    <string name="hud_fps">%1$.1f إطار/ث · %2$.0f%% سرعة</string>
+    <string name="hud_underruns">انقطاعات صوت: %1$d</string>
+    <string name="hud_rewind">رجوع متاح: %1$d إطار</string>
+    <string name="toast_load_failed">تعذّر التشغيل: %1$s</string>
+    <string name="core_missing">لم تُجد النواة داخل التطبيق — أعد تثبيت النسخة الصحيحة</string>
+
+    <!-- الأزرار -->
+    <string name="btn_a">A</string>
+    <string name="btn_b">B</string>
+    <string name="btn_start">بدء</string>
+    <string name="btn_select">اختيار</string>
+    <string name="btn_turbo">تربو</string>
+
+    <!-- الحفظ -->
+    <string name="states_title">شرائح الحفظ</string>
+    <string name="states_save">حفظ</string>
+    <string name="states_load">تحميل</string>
+    <string name="states_quick_save">حفظ سريع</string>
+    <string name="states_quick_load">تحميل سريع</string>
+    <string name="states_empty">فارغ</string>
+    <string name="states_saved_at">الإطار %1$d</string>
+    <string name="battery_flush">احفظ ذاكرة البطارية الآن</string>
+    <string name="battery_flushed">حُفظت ذاكرة البطارية (%1$d بايت)</string>
+
+    <!-- الغش -->
+    <string name="cheats_title">الغش</string>
+    <string name="cheats_add">أضف كودًا</string>
+    <string name="cheats_code">الكود (Game Genie/Par) أو RAW:عنوان=قيمة</string>
+    <string name="cheats_desc">الوصف</string>
+    <string name="cheats_enabled">مُفعّل</string>
+    <string name="cheats_decode_ok">يُترجم إلى %1$s = %2$d</string>
+    <string name="cheats_decode_bad">كود غير صالح</string>
+    <string name="cheats_live">من النواة: %1$s</string>
+    <string name="cheats_none">لا أكواد. أضف كود Game Genie من زر «أضف كودًا».</string>
+
+    <!-- الإعدادات -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_video">الفيديو</string>
+    <string name="settings_scale">طريقة التكبير</string>
+    <string name="settings_filter">الفلترة</string>
+    <string name="settings_scanlines">خطوط المسح (٪)</string>
+    <string name="settings_overscan">قص الحواف (٪)</string>
+    <string name="settings_rotation">تدوير الصورة</string>
+    <string name="settings_audio">الصوت</string>
+    <string name="settings_volume">مستوى الصوت</string>
+    <string name="settings_emulation">المحاكاة</string>
+    <string name="settings_rewind">طول الرجوع (ثانية)</string>
+    <string name="settings_runahead">Run-ahead (تقليل التأخير)</string>
+    <string name="settings_sram">ذاكرة البطارية</string>
+    <string name="settings_core_options">خيارات النواة</string>
+    <string name="settings_restarts">بعض الخيارات تُطبَّق بعد إعادة تشغيل الروم</string>
+    <string name="settings_power_cycle">أعد تشغيل الروم</string>
+    <string name="settings_apply">طبّق</string>
+    <string name="settings_layout">تخطيط الأزرار</string>
+
+    <string name="close">إغلاق</string>
+    <string name="back">رجوع</string>
+    <string name="layout_classic">كلاسيكي (dpad يسار)</string>
+    <string name="layout_mirrored">معكوس (dpad يمين)</string>
+    <string name="layout_one_hand">يد واحدة (يمين)</string>
+    <string name="load_failed_generic">تعذّر تحميل الروم.</string>
+    <string name="surface_failed">تعذّر إرفاق سطح العرض: %1$s</string>
+    <string name="rewind_failed">لا رجوع أكثر: %1$s</string>
+    <string name="battery_failed">تعذّرت كتابة ذاكرة البطارية: %1$s</string>
+    <string name="states_saved">حُفظت الحالة في %1$s</string>
+    <string name="states_save_failed">فشل حفظ الحالة: %1$s</string>
+    <string name="states_empty_slot">الخانة %1$d فارغة</string>
+    <string name="states_loaded">تم تحميل %1$s</string>
+    <string name="states_load_failed">فشل تحميل الحالة: %1$s</string>
+    <string name="states_quick_saved">حُفظت الخانة السريعة</string>
+    <string name="states_quick_failed">فشل الحفظ السريع</string>
+    <string name="cheats_rejected">النواة رفضت الغشّة: %1$s</string>
+    <string name="option_failed">تعذّر ضبط الخيار: %1$s</string>
+    <string name="settings_overlay">طبقة الأزرار</string>
+    <string name="settings_autosave">حفظ ذاكرة البطارية تلقائيًا</string>
+</resources>
