@@ -317,17 +317,19 @@ core options: palette, ntsc preset, vsync, run-ahead)، تحكم، حفظ (مس�
    `Library.kt`). النتيجة نفسها للمستخدم؛ أقلّ اعتماديات، أقلّ خطر كسر في توليد الشيفرة.
 3. **JUnit5 في `:core:common` → JUnit4 في اختبارات الوحدتين**. نفس الغرض (اختبارات JVM
    خالصة بلا Robolectric) بأقلّ سطور بناء.
-4. **لا AAB ولا Telegram** — APK موحَّد + SHA256، لأن التوزيع sideload. (بند §7 عُدِّل accordingly.)
+4. **لا AAB ولا Telegram** — APK موحَّد (debug/release) + SHA256، لأن التوزيع sideload. (عُدِّل بند §7 ليطابق ذلك.)
 5. **ملف CI في `.ci/android-build.yml`** لا في `.github/workflows/`: صلاحية الدفع الحالية
    (GitHub App) ممنوعة من إنشاء/تعديل مسارات `workflow`. الأمر في `docs/BUILD.md §3`.
-6. **`nescc` غير مبنيّ**: غطاؤه 7 مابرات لا تكفي عائلة ماريو، وغلو-ه في libretro لا يُترجم.
+6. **`nescc` غير مبنيّ**: غطاؤه سبع مابرات لا تكفي عائلة ماريو، وغلاؤه (glue) في libretro لا يُترجم كما نُشر.
    `MB_CORE_NESCC=OFF` افتراضًا، والتفعيل **فشل صاخب** في CMake بدل نواة نصف مبنية.
+7. **`docs/PROVENANCE.md` لم يُنشَأ مستقلاً**: نسبة الشيفرة المدمجة وطريقة إثبات عدم
+   تعديلها صارت قسمًا في `docs/THIRD_PARTY.md` — ملفان يتباعدان أخطر من قسم واحد.
 
 ### حقائق اكتشفها البناء (احذروها)
 
 * **`HAVE_NTSC := 1` يحمل معنى مزدوجًا**: هو ما يُدخل `src/ntsc/nes_ntsc.c` **و**
   `-DHAVE_NTSC_FILTER`. أي تعديل يفسد قيمته (مثل `# comment` في نفس السطر!) يُسقط
-  المرشّحComposite بصمت؛ اكتشاف ذلك كان عبر جدول خيارات النواة لا عبر خطأ ترجمة.
+  مرشّح Composite بصمت؛ اكتشاف ذلك كان عبر جدول خيارات النواة لا عبر خطأ ترجمة.
 * **GCC يدمج `sin()/cos()` في `src/nsf.c` إلى `sincos()`**: glibc تصدّره، bionic القديمة لا.
   لذا `-fno-builtin-sincos -fno-builtin-sincosf` إلزامي، وإلا `dlopen` يفشل على الجهاز.
 * **`retro_set_cheat_state` و`retro_get_perf_counter` غير موجودين**؛ الغشّات تحتاج جسرًا
