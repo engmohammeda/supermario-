@@ -90,31 +90,23 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;${{ env.SDK_PLATFORM }}" "build-tools;${{ env.BUILD_TOOLS }}" "ndk;${{ env.NDK_VERSION }}" "cmake;3.31.6"
 
-      - name: Gradle unit tests (N2)
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.5.0'
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          arguments: testDebugUnitTest
+
+      - name: Gradle unit tests (N2)
+        run: ./gradlew testDebugUnitTest
 
       - name: Assemble debug APK
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.5.0'
-          arguments: assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Assemble release APK (unsigned)
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.5.0'
-          arguments: assembleRelease --stacktrace
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Lint (informational)
         continue-on-error: true
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.5.0'
-          arguments: lintDebug
+        run: ./gradlew lintDebug
 
       - name: Collect artifacts
         run: |
