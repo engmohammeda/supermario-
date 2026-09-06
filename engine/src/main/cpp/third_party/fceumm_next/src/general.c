@@ -1,0 +1,97 @@
+/* FCE Ultra - NES/Famicom Emulator
+ *
+ * Copyright notice for this file:
+ *  Copyright (C) 2002 Xodnizel
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
+#include <compat/strl.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
+
+#include <file/file_path.h>
+
+#include "fceu-types.h"
+#include "fceu.h"
+
+#include "general.h"
+#include "state.h"
+
+#include "driver.h"
+
+#include "md5.h"
+
+static char BaseDirectory[2048] = { 0 };
+
+void FCEUI_SetBaseDirectory(const char *dir) {
+	strlcpy(BaseDirectory, dir, sizeof(BaseDirectory));
+}
+
+char *FCEU_MakeFName(int type, int id1, char *cd1) {
+	char tmp[4096 + 512] = { 0 }; /* +512 for no reason :D */
+	char *ret = 0;
+	size_t len;
+
+	switch (type) {
+	case FCEUMKF_GGROM:
+		fill_pathname_join(tmp, BaseDirectory, "gamegenie.nes", sizeof(tmp));
+		break;
+	case FCEUMKF_FDSROM:
+		fill_pathname_join(tmp, BaseDirectory, "disksys.rom", sizeof(tmp));
+		break;
+	case FCEUMKF_PALETTE:
+		fill_pathname_join(tmp, BaseDirectory, "nes.pal", sizeof(tmp));
+		break;
+   case FCEUMKF_PALETTE_512:
+		fill_pathname_join(tmp, BaseDirectory, "nes512.pal", sizeof(tmp));
+		break;
+	default:
+		break;
+	}
+
+	FCEU_printf(" FCEU_MakeFName: %s\n", tmp);
+
+	len = strlen(tmp) + 1;
+	ret = (char *)malloc(len);
+	if (!ret) return NULL;
+	strlcpy(ret, tmp, len);
+
+	return (ret);
+}
+
+uint32_t uppow2(uint32_t n) {
+	int x;
+
+	for (x = 31; x >= 0; x--) {
+		if (n & (1 << x)) {
+			if ((uint32_t)(1 << x) != n) {
+				return (1 << (x + 1));
+         }
+			break;
+		}
+   }
+	return n;
+}

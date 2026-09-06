@@ -1,0 +1,124 @@
+LIBRETRO_COMM_DIR := $(LIBRETRO_DIR)/libretro-common
+
+INCFLAGS := \
+	-I$(LIBRETRO_DIR) \
+	-I$(LIBRETRO_COMM_DIR)/include \
+	-I$(SOURCE_DIR) \
+	-I$(SOURCE_DIR)/input \
+	-I$(SOURCE_DIR)/mappers \
+	-I$(SOURCE_DIR)/mappers/hw \
+	-I$(SOURCE_DIR)/mappers/sound
+
+ifneq (,$(findstring msvc2003,$(platform)))
+	INCFLAGS += -I$(LIBRETRO_COMM_DIR)/include/compat/msvc
+endif
+
+FCEU_SRC_DIRS := \
+	$(SOURCE_DIR)/input \
+	$(SOURCE_DIR)/mappers \
+	$(SOURCE_DIR)/mappers_wip
+
+SOURCES_C := $(foreach dir,$(FCEU_SRC_DIRS),$(wildcard $(dir)/*.c))
+
+# HW
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/eeprom_93Cx6.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/eeprom_24C0x.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/flashrom.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/pic16c5x.c
+
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/fcg.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/fme7.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/h3001.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/jv001.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/jyasic.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/ks202.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/latch.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/mmc1.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/mmc2.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/mmc3.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/mmc4.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/mmc5.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/n118.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/onebus.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/txc.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/vrc1.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/vrc3.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/vrc24.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/vrc6.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/vrc7.c
+SOURCES_C += $(SOURCE_DIR)/mappers/hw/vrcirq.c
+
+# SOUND
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/dripsound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/emu2149.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/emu2413.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/fdssound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/mmc5sound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/n163sound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/s5bsound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/vrc6sound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/vrc7sound.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/fifo.c
+SOURCES_C += $(SOURCE_DIR)/mappers/sound/msm6585.c
+
+ifeq ($(HAVE_NTSC),1)
+	COREDEFINES += \
+		-DHAVE_NTSC_FILTER \
+		-I$(SOURCE_DIR)/ntsc
+	SOURCES_C += \
+		$(SOURCE_DIR)/ntsc/nes_ntsc.c
+endif
+
+SOURCES_C += \
+	$(SOURCE_DIR)/cart.c \
+	$(SOURCE_DIR)/cartram.c \
+	$(SOURCE_DIR)/cheat.c \
+	$(SOURCE_DIR)/crc32.c \
+	$(SOURCE_DIR)/drawing.c \
+	$(SOURCE_DIR)/fceu-endian.c \
+	$(SOURCE_DIR)/fceu-memory.c \
+	$(SOURCE_DIR)/fceu.c \
+	$(SOURCE_DIR)/fds.c \
+	$(SOURCE_DIR)/file.c \
+	$(SOURCE_DIR)/filter.c \
+	$(SOURCE_DIR)/gamegenie.c \
+	$(SOURCE_DIR)/general.c \
+	$(SOURCE_DIR)/input.c \
+	$(SOURCE_DIR)/md5.c \
+	$(SOURCE_DIR)/nsf.c \
+	$(SOURCE_DIR)/nsfe.c \
+	$(SOURCE_DIR)/palette.c \
+	$(SOURCE_DIR)/ppu.c \
+	$(SOURCE_DIR)/sound.c \
+	$(SOURCE_DIR)/state.c \
+	$(SOURCE_DIR)/video.c \
+	$(SOURCE_DIR)/vsuni.c \
+	$(SOURCE_DIR)/ines.c \
+	$(SOURCE_DIR)/unif.c \
+	$(SOURCE_DIR)/x6502.c
+
+ifneq ($(STATIC_LINKING), 1)
+	SOURCES_C += \
+		$(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
+		$(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
+		$(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
+		$(LIBRETRO_COMM_DIR)/compat/fopen_utf8.c \
+		$(LIBRETRO_COMM_DIR)/encodings/encoding_utf.c \
+		$(LIBRETRO_COMM_DIR)/file/file_path.c \
+		$(LIBRETRO_COMM_DIR)/file/file_path_io.c \
+		$(LIBRETRO_COMM_DIR)/streams/file_stream.c \
+		$(LIBRETRO_COMM_DIR)/streams/file_stream_transforms.c \
+		$(LIBRETRO_COMM_DIR)/streams/memory_stream.c \
+		$(LIBRETRO_COMM_DIR)/string/stdstring.c \
+		$(LIBRETRO_COMM_DIR)/time/rtime.c \
+		$(LIBRETRO_COMM_DIR)/vfs/vfs_implementation.c
+ifdef _MSC_VER
+	SOURCES_C += \
+ 		$(LIBRETRO_COMM_DIR)/compat/compat_snprintf.c
+endif
+endif
+
+SOURCES_C += \
+	$(LIBRETRO_DIR)/libretro_input.c \
+	$(LIBRETRO_DIR)/libretro_dipswitch.c \
+	$(LIBRETRO_DIR)/libretro.c

@@ -1,0 +1,310 @@
+#include "nes/Nes.h"
+
+#include <cstring>
+#include <fstream>
+#include <iterator>
+
+namespace nes {
+
+Nes::Nes() : m_regs(), m_cartridge(), m_ppu(nullptr), m_apu(),
+		m_bus(new NesBus(nullptr, &m_ppu, &m_apu)), m_clock(),
+		m_cpu(new Processor(m_bus.get(), &m_regs, &m_clock)),
+		m_region(Region::Ntsc) {
+	// The power-on state, which reset() deliberately does not reproduce.
+	powerOnRegisters();
+
+	// The 2A03 is a 6502 with the decimal circuitry disabled: ADC and SBC
+	// ignore the D flag entirely. Games set and clear D like any other bit and
+	// a few leave it set, so a core doing real BCD gets different answers --
+	// which is what blargg's instr_test found across seven of its ROMs.
+	m_regs.decimalDisabled = true;
+
+	// The DMC fetches its samples over the CPU bus, like a second bus master.
+	m_apu.setBus(m_bus.get());
+}
+
+void Nes::powerOnRegisters() {
+	// A stack pointer of 0 becomes the $FD everybody expects once the reset
+	// that follows a power-on decrements it three times, which is where that
+	// number comes from.
+	m_regs.a = 0;
+	m_regs.x = 0;
+	m_regs.y = 0;
+	m_regs.sp = 0;
+	m_regs.sr = FLAG__;
+	m_regs.pc = 0;
+}
+
+void Nes::powerOn() {
+	// Everything a reset leaves alone, because this is the other switch: the
+	// RAM goes, and so do the registers.
+	m_bus->clearRam();
+	powerOnRegisters();
+	// The APU distinguishes the two as well: a power-up writes $4017 with $00 and
+	// a reset leaves it alone, so this has to happen before the reset below
+	// rather than instead of it.
+	m_apu.powerOn();
+	reset();
+}
+
+Nes::~Nes() = default;
+
+bool Nes::loadRom(const std::string& path, std::string* error) {
+	std::unique_ptr<Cartridge> cart = Cartridge::fromFile(path, error);
+	if (!cart)
+		return false;
+
+	setCartridge(std::move(cart));
+
+	if (m_cartridge->hasPersistentRam()) {
+		m_savePath = Cartridge::batteryRamPathFor(path);
+		// A missing save is the normal first run, so a failure here is only
+		// ever a real read error -- worth reporting, not worth refusing to
+		// start over.
+		m_cartridge->loadBatteryRam(m_savePath, error);
+	} else {
+		m_savePath.clear();
+	}
+	return true;
+}
+
+bool Nes::saveBatteryRam(std::string* error) const {
+	if (!m_cartridge || m_savePath.empty())
+		return true;
+	return m_cartridge->saveBatteryRam(m_savePath, error);
+}
+
+void Nes::setCartridge(std::unique_ptr<Cartridge> cartridge) {
+	m_cartridge = std::move(cartridge);
+	m_bus->setCartridge(m_cartridge.get());
+	m_ppu.setCartridge(m_cartridge.get());
+
+	// The cartridge decides the region, and the region decides the timing of
+	// every other chip in the machine.
+	m_region = m_cartridge ? m_cartridge->region() : Region::Ntsc;
+	m_ppu.setRegion(m_region);
+	m_apu.setRegion(m_region);
+	m_bus->setRegion(m_region);
+}
+
+void Nes::reset() {
+	// Neither the RAM nor A, X and Y are touched. Reset asserts a pin; it does
+	// not clear the machine, and a game is entitled to notice what survived.
+	// The stack pointer moves because the reset sequence goes through the
+	// motions of pushing a return address and the status register without ever
+	// writing them -- three decrements, no writes.
+	m_ppu.reset();
+	m_apu.reset();
+	m_regs.sp -= 3;
+	m_regs.sr |= FLAG_I;
+	m_regs.pc = m_bus->read(0xFFFC) | (m_bus->read(0xFFFD) << 8);
+	m_cpu->clearInterrupts();
+	m_bus->setRegion(m_region);   // also clears the carried dot fraction
+	m_clock.reset();
+	m_clock.beginCycle();
+	m_clock.waitCycles(7); // the reset sequence costs 7 cycles
+}
+
+int Nes::step() {
+	int cycles;
+
+	// Both DMA units steal cycles from the CPU: OAM DMA in one 513-cycle block,
+	// the DMC four at a time as it fetches sample bytes. Neither stops the PPU
+	// or the APU, which is the whole reason the stalls have to be modelled
+	// rather than ignored.
+	const int stall = m_bus->takeDmaStall() + m_apu.takeDmcStall();
+	if (stall > 0) {
+		// Time the CPU spends off the bus entirely, so there is nothing to
+		// distribute: it all happens, and then the CPU resumes.
+		m_clock.waitCycles(stall);
+		cycles = stall;
+		m_bus->advance(cycles);
+	} else {
+		// The bus advances the PPU and APU a cycle at a time as the instruction
+		// makes its accesses, so a device is read at the cycle it is read at.
+		// endInstruction() settles whatever the accesses did not account for.
+		m_bus->beginInstruction();
+		const std::uint64_t before = m_clock.cycles();
+		m_cpu->step();
+		cycles = static_cast<int>(m_clock.cycles() - before);
+		m_bus->endInstruction(cycles);
+	}
+
+	if (m_ppu.takeNmi())
+		m_cpu->nmi();
+	// Two devices share the IRQ line: the APU's frame counter and DMC, and the
+	// cartridge on boards with a counter of their own. Both are level-triggered
+	// and stay asserted until the handler acknowledges them through their own
+	// registers, so re-evaluating every step is correct -- and is why this is
+	// not an edge like the NMI. The CPU sees one line, as it does in hardware.
+	const bool cartIrq = m_cartridge && m_cartridge->irqAsserted();
+	m_cpu->irq(m_apu.irqAsserted() || cartIrq);
+
+	return cycles;
+}
+
+int Nes::stepFrame() {
+	const std::uint64_t target = m_ppu.frame() + 1;
+	int cycles = 0;
+	while (m_ppu.frame() != target)
+		cycles += step();
+	return cycles;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Save states                                                                */
+/* ------------------------------------------------------------------------- */
+
+std::uint64_t Nes::romFingerprint() const {
+	if (!m_cartridge)
+		return 0;
+	// Sizes and mapper number are the cheap part and catch most mix-ups on
+	// their own; the rest distinguishes two games that happen to have the same
+	// shape. Not a security claim, and does not need to be: the mistake being
+	// prevented is loading Zelda's state into Mario.
+	std::uint64_t hash = 1469598103934665603ull;          // FNV-1a offset basis
+	const std::uint64_t shape[3] = {
+		static_cast<std::uint64_t>(m_cartridge->prgSize()),
+		static_cast<std::uint64_t>(m_cartridge->chrSize()),
+		static_cast<std::uint64_t>(m_cartridge->mapperNumber())
+	};
+	for (int i = 0; i < 3; i++) {
+		hash ^= shape[i];
+		hash *= 1099511628211ull;
+	}
+	// A sample of the PRG rather than all of it: the reset vector, the vectors
+	// beside it, and a scatter through the image. Reading a megabyte to decide
+	// whether a state belongs to this game would be a waste of everybody's time.
+	for (std::uint32_t address = 0x8000; address < 0x10000; address += 0x40) {
+		hash ^= m_cartridge->cpuRead(static_cast<std::uint16_t>(address));
+		hash *= 1099511628211ull;
+	}
+	return hash;
+}
+
+void Nes::serialize(State& state) {
+	state.tag("NES");
+
+	// The CPU, which lives in the core rather than here.
+	state.value(m_regs.a);
+	state.value(m_regs.x);
+	state.value(m_regs.y);
+	state.value(m_regs.sr);
+	state.value(m_regs.sp);
+	state.value(m_regs.pc);
+
+	// What the CPU was about to do about interrupts. The delayed I flag is the
+	// subtle one: restoring in the middle of "CLI; SEI" without it takes an
+	// interrupt the real machine would not have.
+	bool nmiPending = m_cpu->nmiPending();
+	bool irqLine = m_cpu->irqAsserted();
+	state.value(nmiPending);
+	state.value(irqLine);
+	if (!state.writing()) {
+		m_cpu->clearInterrupts();
+		if (nmiPending)
+			m_cpu->nmi();
+		m_cpu->irq(irqLine);
+	}
+
+	std::uint64_t cycles = m_clock.cycles();
+	state.value(cycles);
+	if (!state.writing()) {
+		m_clock.reset();
+		m_clock.beginCycle();
+		m_clock.waitCycles(static_cast<int>(cycles & 0x7FFFFFFF));
+	}
+
+	m_bus->serialize(state);
+	m_ppu.serialize(state);
+	m_apu.serialize(state);
+	if (m_cartridge)
+		m_cartridge->serialize(state);
+}
+
+bool Nes::saveState(const std::string& path, std::string* error) {
+	if (!m_cartridge) {
+		if (error) *error = "no cartridge loaded";
+		return false;
+	}
+
+	State state = State::forWriting();
+	std::uint32_t version = STATE_VERSION;
+	std::uint64_t fingerprint = romFingerprint();
+	state.tag("NSTA");
+	state.value(version);
+	state.value(fingerprint);
+	serialize(state);
+
+	std::ofstream out(path.c_str(), std::ios::binary | std::ios::trunc);
+	if (!out) {
+		if (error) *error = "cannot write " + path;
+		return false;
+	}
+	out.write(reinterpret_cast<const char*>(state.data().data()),
+			static_cast<std::streamsize>(state.data().size()));
+	if (!out) {
+		if (error) *error = "failed writing " + path;
+		return false;
+	}
+	return true;
+}
+
+bool Nes::loadState(const std::string& path, std::string* error) {
+	if (!m_cartridge) {
+		if (error) *error = "no cartridge loaded";
+		return false;
+	}
+
+	std::ifstream in(path.c_str(), std::ios::binary);
+	if (!in) {
+		if (error) *error = "cannot read " + path;
+		return false;
+	}
+	std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(in)),
+			std::istreambuf_iterator<char>());
+
+	// Read the header before touching anything. A state from another game or
+	// another build has to be refused with the machine still running, because a
+	// half-loaded console is worse than a rejected file.
+	State header = State::forReading(bytes);
+	std::uint32_t version = 0;
+	std::uint64_t fingerprint = 0;
+	header.tag("NSTA");
+	header.value(version);
+	header.value(fingerprint);
+	if (header.failed()) {
+		if (error) *error = path + " is not a save state";
+		return false;
+	}
+	if (version != STATE_VERSION) {
+		if (error) *error = "save state is version "
+				+ std::to_string(version) + "; this build writes version "
+				+ std::to_string(STATE_VERSION);
+		return false;
+	}
+	if (fingerprint != romFingerprint()) {
+		if (error) *error = "that save state belongs to a different ROM";
+		return false;
+	}
+
+	State state = State::forReading(bytes);
+	std::uint32_t ignoredVersion = 0;
+	std::uint64_t ignoredFingerprint = 0;
+	state.tag("NSTA");
+	state.value(ignoredVersion);
+	state.value(ignoredFingerprint);
+	serialize(state);
+
+	if (state.failed()) {
+		// The machine is now part-way through a state that turned out to be
+		// unusable, so the only honest thing left is to start it over.
+		powerOn();
+		if (error) *error = path + " is truncated or from a different build; "
+				"the console was reset";
+		return false;
+	}
+	return true;
+}
+
+} // namespace nes

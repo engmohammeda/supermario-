@@ -1,0 +1,27 @@
+# Everything under build/ is generated: the desktop test tree (test_host, the
+# core .so, the sanitizer tree) and the generated probe ROM. `make -C
+# engine/src/test/native run` regenerates the ROM, and the core .so is rebuilt
+# from third_party/fceumm_next on every build.
+build/
+*.o
+*.so
+*.a
+*.d
+.deps/
+
+# Android / Gradle
+.gradle/
+.cxx/
+local.properties
+*.apk
+*.aab
+*.keystore
+
+# Python (tools/)
+__pycache__/
+*.pyc
+
+# Editor and OS noise
+*.swp
+*~
+.DS_Store
