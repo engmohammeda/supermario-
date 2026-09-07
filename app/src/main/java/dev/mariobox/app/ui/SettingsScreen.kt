@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -399,8 +400,10 @@ fun SliderRow(label: String, value: Float, from: Float, to: Float, onValue: (Flo
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, color = MarioBoxColors.TextPrimary)
+            val shown = if (to <= 1f) String.format("%.0f%%", value * 100)
+            else String.format("%.0f", value)
             Text(
-                "${\"%.0f\".format(if (to <= 1f) value * 100 else value)}${if (to <= 1f) "%" else ""}",
+                shown,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MarioBoxColors.SecondaryCyan,
                 fontWeight = FontWeight.Bold
