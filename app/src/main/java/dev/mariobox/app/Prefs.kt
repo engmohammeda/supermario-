@@ -89,18 +89,20 @@ class Prefs(context: Context) {
      * preset scattered buttons across the middle of the screen.
      */
     var overlayLayout: Int
-        get() = try {
-            val raw = sp.getInt("overlay_layout", LAYOUT_CLASSIC)
+        get() {
+            val raw = try {
+                sp.getInt("overlay_layout", LAYOUT_LEFT)
+            } catch (e: Exception) {
+                LAYOUT_LEFT
+            }
             val migrated = sp.getBoolean("overlay_layout_v2", false)
             if (!migrated) {
                 sp.edit().putBoolean("overlay_layout_v2", true).apply()
                 // The old default index (2, "both") was a one-handed cluster; keep
                 // an explicitly chosen mirror/custom, repair the shipped default.
-                return if (raw == LAYOUT_BOTH) LAYOUT_CLASSIC else raw
+                return if (raw == LAYOUT_BOTH) LAYOUT_LEFT else raw
             }
-            raw
-        } catch (e: Exception) {
-            LAYOUT_CLASSIC
+            return raw
         }
         set(v) = sp.edit().putInt("overlay_layout", v.coerceIn(0, 3)).apply()
 

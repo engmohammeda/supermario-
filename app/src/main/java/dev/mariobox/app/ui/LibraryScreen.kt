@@ -155,9 +155,11 @@ fun LibraryScreen(
                     }
 
                     items(filtered, key = { it.path }) { cartridge ->
+                        val cover = remember(cartridge.path) { vm.library.loadThumbnail(cartridge) }
                         CartridgeCard(
                             cartridge = cartridge,
                             isLastPlayed = cartridge.path == vm.prefs.lastRomPath,
+                            cover = cover,
                             onPlay = { onPlay(cartridge) },
                             onInfo = { selectedInfoCartridge = cartridge },
                             onDelete = {
@@ -510,6 +512,7 @@ private fun FeaturedCartridgeCard(
 private fun CartridgeCard(
     cartridge: Cartridge,
     isLastPlayed: Boolean,
+    cover: android.graphics.Bitmap?,
     onPlay: () -> Unit,
     onInfo: () -> Unit,
     onDelete: () -> Unit
@@ -534,7 +537,6 @@ private fun CartridgeCard(
         ) {
             // Cover art: the real game thumbnail captured from play, falling back
             // to a cartridge badge for games that have never run.
-            val cover = remember(cartridge.path) { vm.library.loadThumbnail(cartridge) }
             Box(
                 modifier = Modifier
                     .size(width = 58.dp, height = 46.dp)

@@ -248,7 +248,7 @@ internal fun DpadBase(
  * A press-and-hold tactile button with glow and a slight "pressed down" scale.
  */
 @Composable
-fun HoldPadButton(
+private fun HoldPadButton(
     action: PadAction,
     label: String,
     variant: PadVariant,
@@ -360,7 +360,7 @@ fun HoldPadButton(
 
 /** A modern glassmorphic momentary button (rewind, quick-save, fast-forward). */
 @Composable
-fun TapPadButton(
+private fun TapPadButton(
     label: String,
     variant: PadVariant,
     modifier: Modifier,
