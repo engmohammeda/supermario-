@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,14 +50,17 @@ import androidx.compose.ui.unit.sp
 import dev.mariobox.app.EmulatorViewModel
 import dev.mariobox.app.R
 import androidx.compose.ui.res.stringResource
+import kotlin.math.min
 
 /**
  * The custom control editor.
  *
- * Full-screen (it is a sheet of its own), it draws the real overlay at the saved
- * custom placements and lets the user drag each control, then tweak size, opacity
- * and visibility in the inspector below. Nothing is written to disk until
- * "حفظ وإغلاق" is pressed, so an accidental drag is never permanent.
+ * The canvas is its own measured [BoxWithConstraints]: every button inside is
+ * positioned with the *same geometry the real overlay uses* — `cx`/`cy` as
+ * fractions of the canvas width/height, `w`/`h` as fractions of its short edge.
+ * That is what makes a drag land where the finger is (the old editor measured the
+ * whole sheet and the canvas was a weighted slice of it, so placements drifted).
+ * Nothing is written to disk until "حفظ وإغلاق" is pressed.
  */
 @Composable
 fun ControlsEditor(vm: EmulatorViewModel, onDone: () -> Unit) {
@@ -65,151 +69,201 @@ fun ControlsEditor(vm: EmulatorViewModel, onDone: () -> Unit) {
     }
     var selected by remember { mutableStateOf<PadAction?>(PadAction.A) }
 
+    Column(Modifier.fillMaxSize()) {
+        // Toolbar -------------------------------------------------------------
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("🎛", fontSize = 18.sp)
+            Text(
+                stringResource(R.string.controls_editor_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MarioBoxColors.TextPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedChip(
+                label = stringResource(R.string.controls_reset),
+                onClick = { custom = PadLayout.defaultCustom(); selected = PadAction.A }
+            )
+            Button(
+                onClick = {
+                    vm.prefs.setCustomControlMap(custom)
+                    vm.prefs.overlayLayout = PadLayout.PRESET_CUSTOM
+                    onDone()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(stringResource(R.string.controls_save), color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Action picker --------------------------------------------------------
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(PadAction.entries) { action ->
+                val isSel = selected == action
+                Surface(
+                    onClick = { selected = action },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isSel) MarioBoxColors.SecondaryCyan else MarioBoxColors.Surface,
+                    modifier = Modifier.border(
+                        1.dp,
+                        if (isSel) MarioBoxColors.SecondaryCyan else MarioBoxColors.SurfaceBorder,
+                        RoundedCornerShape(10.dp)
+                    )
+                ) {
+                    Text(
+                        action.editorLabel,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        fontSize = 11.sp,
+                        fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSel) Color.Black else MarioBoxColors.TextPrimary
+                    )
+                }
+            }
+        }
+
+        // Canvas ---------------------------------------------------------------
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xF0090A10))
+                .border(1.dp, MarioBoxColors.SurfaceBorder, RoundedCornerShape(14.dp))
+        ) {
+            EditorCanvas(
+                custom = custom,
+                selected = selected,
+                onSelect = { selected = it },
+                onMove = { action, p ->
+                    custom = custom + (action to p)
+                }
+            )
+
+            if (selected != null) {
+                Text(
+                    stringResource(R.string.controls_hint),
+                    color = MarioBoxColors.TextTertiary,
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp)
+                )
+            }
+        }
+
+        // Inspector ------------------------------------------------------------
+        InspectorPanel(
+            action = selected,
+            value = selected?.let { custom[it] },
+            onChanged = { action, p ->
+                custom = custom + (action to p)
+            },
+            onResetSpot = { action ->
+                val base = PadLayout.defaultCustom().getValue(action)
+                custom = custom + (action to base)
+            }
+        )
+    }
+}
+
+/**
+ * The drag surface. Self-measured: all geometry inside uses only the canvas's own
+ * width/height, matching [ControlsLayer] 1:1.
+ */
+@Composable
+private fun EditorCanvas(
+    custom: Map<PadAction, ControlPlacement>,
+    selected: PadAction?,
+    onSelect: (PadAction) -> Unit,
+    onMove: (PadAction, ControlPlacement) -> Unit,
+) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val width: Dp = maxWidth
         val height: Dp = maxHeight
         val density = LocalDensity.current
         val widthPx = with(density) { width.toPx() }
         val heightPx = with(density) { height.toPx() }
+        val shortPx = min(widthPx, heightPx)
+        val aspect = PadLayout.shortOverLong(widthPx, heightPx)
+        // Keep the drag handler seeing the freshest map without restarting the
+        // pointerInput capture mid-gesture.
+        val currentCustom by rememberUpdatedState(custom)
+        val shortDp = minOf(width, height)
 
-        Column(Modifier.fillMaxSize()) {
-            // Toolbar ---------------------------------------------------------
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("🎛", fontSize = 18.sp)
-                Text(
-                    stringResource(R.string.controls_editor_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MarioBoxColors.TextPrimary,
-                    modifier = Modifier.weight(1f)
+        // Faint game-screen guide (a 4:3/16:9 safe zone) so buttons can be kept
+        // clear of where the picture sits.
+        Box(
+            Modifier
+                .align(Alignment.Center)
+                .fillMaxSize(0.72f)
+                .border(
+                    1.dp,
+                    MarioBoxColors.SurfaceBorder.copy(alpha = 0.6f),
+                    RoundedCornerShape(6.dp)
                 )
-                OutlinedChip(
-                    label = stringResource(R.string.controls_reset),
-                    onClick = { custom = PadLayout.defaultCustom(); selected = PadAction.A }
+        )
+
+        // The same plus-shaped base the real overlay draws under the arms.
+        DpadBase(
+            placements = currentCustom
+                .filterValues { it.visible }
+                .mapValues { (_, p) -> Placement(p.cx, p.cy, p.w, p.h) },
+            width = width,
+            height = height,
+            shortEdge = shortDp,
+        )
+
+        for ((action, p) in custom) {
+            if (!p.visible) continue
+            val isSel = selected == action
+            val wDp = with(density) { (shortPx * p.w).toDp() }
+            val hDp = with(density) { (shortPx * p.h).toDp() }
+            val mod = Modifier
+                .offset(
+                    x = width * p.cx - wDp / 2f,
+                    y = height * p.cy - hDp / 2f
                 )
-                Button(
-                    onClick = {
-                        vm.prefs.setCustomControlMap(custom)
-                        vm.prefs.overlayLayout = PadLayout.PRESET_CUSTOM
-                        onDone()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(stringResource(R.string.controls_save), color = Color.White, fontWeight = FontWeight.Bold)
+                .size(width = wDp, height = hDp)
+                .pointerInput(action) {
+                    detectTapGestures(onTap = { onSelect(action) })
                 }
-            }
-
-            // Action picker ----------------------------------------------------
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(PadAction.entries) { action ->
-                    val isSel = selected == action
-                    Surface(
-                        onClick = { selected = action },
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSel) MarioBoxColors.SecondaryCyan else MarioBoxColors.Surface,
-                        modifier = Modifier.border(
-                            1.dp,
-                            if (isSel) MarioBoxColors.SecondaryCyan else MarioBoxColors.SurfaceBorder,
-                            RoundedCornerShape(10.dp)
-                        )
-                    ) {
-                        Text(
-                            action.editorLabel,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            fontSize = 11.sp,
-                            fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSel) Color.Black else MarioBoxColors.TextPrimary
-                        )
-                    }
-                }
-            }
-
-            // Canvas -----------------------------------------------------------
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-            ) {
-                // faint grid so the drag feels like a real editor
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MarioBoxColors.Background.copy(alpha = 0.35f))
-                        .border(1.dp, MarioBoxColors.SurfaceBorder, RoundedCornerShape(14.dp))
-                )
-
-                for ((action, p) in custom) {
-                    if (!p.visible) continue
-                    val isSel = selected == action
-                    val mod = Modifier
-                        .offset(
-                            x = width * p.cx - (width * p.w) / 2f,
-                            y = height * p.cy - (height * p.h) / 2f
-                        )
-                        .size(width = width * p.w, height = height * p.h)
-                        .pointerInput(action) {
-                            detectTapGestures(onTap = { selected = action })
-                        }
-                        .pointerInput(action) {
-                            detectDragGestures(
-                                onDragStart = { selected = action },
-                                onDrag = drag@ { change, amount ->
-                                    change.consume()
-                                    val old = custom[action] ?: return@drag
-                                    val next = old.copy(
-                                        cx = old.cx + amount.x / widthPx,
-                                        cy = old.cy + amount.y / heightPx
-                                    )
-                                    custom = custom + (action to PadLayout.clamp(next))
-                                }
+                .pointerInput(action, widthPx, heightPx) {
+                    detectDragGestures(
+                        onDragStart = { onSelect(action) },
+                        onDrag = drag@ { change, amount ->
+                            change.consume()
+                            val old = currentCustom[action] ?: return@drag
+                            val next = old.copy(
+                                cx = old.cx + amount.x / widthPx,
+                                cy = old.cy + amount.y / heightPx
                             )
+                            onMove(action, PadLayout.clamp(next, aspect))
                         }
-
-                    EditorControl(
-                        label = action.editorLabel,
-                        isSelected = isSel,
-                        isAction = action == PadAction.A || action == PadAction.B,
-                        modifier = mod
                     )
                 }
 
-                if (selected != null) {
-                    Text(
-                        stringResource(R.string.controls_hint),
-                        color = MarioBoxColors.TextTertiary,
-                        fontSize = 11.sp,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(10.dp)
-                    )
-                }
-            }
-
-            // Inspector ---------------------------------------------------------
-            InspectorPanel(
-                vm = vm,
-                action = selected,
-                value = selected?.let { custom[it] },
-                onChanged = { action, p ->
-                    custom = custom + (action to p)
+            EditorControl(
+                label = action.editorLabel,
+                isSelected = isSel,
+                isAction = action == PadAction.A || action == PadAction.B,
+                isDpad = PadLayout.bitFor(action).let {
+                    it == dev.mariobox.engine.Gamepad.UP || it == dev.mariobox.engine.Gamepad.DOWN ||
+                        it == dev.mariobox.engine.Gamepad.LEFT || it == dev.mariobox.engine.Gamepad.RIGHT
                 },
-                onResetSpot = { action ->
-                    val base = PadLayout.defaultCustom().getValue(action)
-                    custom = custom + (action to base)
-                }
+                modifier = mod
             )
         }
     }
@@ -220,22 +274,32 @@ private fun EditorControl(
     label: String,
     isSelected: Boolean,
     isAction: Boolean,
+    isDpad: Boolean,
     modifier: Modifier
 ) {
-    val shape = if (isAction) CircleShape else RoundedCornerShape(12.dp)
+    val shape = when {
+        isAction -> CircleShape
+        else -> RoundedCornerShape(10.dp)
+    }
     Box(
         modifier = modifier
             .clip(shape)
             .background(
-                if (isSelected) MarioBoxColors.SecondaryCyan.copy(alpha = 0.25f)
-                else if (isAction) Color(0x33FF2A4B)
-                else Color(0x2B1A243B)
+                when {
+                    isSelected -> MarioBoxColors.SecondaryCyan.copy(alpha = 0.30f)
+                    isDpad -> Color(0x22B9C9E8)
+                    isAction -> Color(0x40FF2A4B)
+                    else -> Color(0x2B1A243B)
+                }
             )
             .border(
                 if (isSelected) 2.dp else 1.5.dp,
-                if (isSelected) MarioBoxColors.SecondaryCyan
-                else if (isAction) Color(0x66FF2A4B)
-                else Color(0x443E517A),
+                when {
+                    isSelected -> MarioBoxColors.SecondaryCyan
+                    isAction -> Color(0x80FF5470)
+                    isDpad -> Color(0x66B9C9E8)
+                    else -> Color(0x553E517A)
+                },
                 shape
             ),
         contentAlignment = Alignment.Center
@@ -243,7 +307,7 @@ private fun EditorControl(
         Text(
             label,
             color = if (isSelected) Color.White else MarioBoxColors.TextSecondary,
-            fontSize = if (isAction) 14.sp else 10.sp,
+            fontSize = if (isAction) 13.sp else 9.sp,
             fontWeight = FontWeight.Black,
             maxLines = 1
         )
@@ -252,7 +316,6 @@ private fun EditorControl(
 
 @Composable
 private fun InspectorPanel(
-    vm: EmulatorViewModel,
     action: PadAction?,
     value: ControlPlacement?,
     onChanged: (PadAction, ControlPlacement) -> Unit,
@@ -296,25 +359,17 @@ private fun InspectorPanel(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                MiniSlider(
-                    label = stringResource(R.string.controls_size_x),
-                    value = value.w,
-                    from = PadLayout.MIN_W,
-                    to = PadLayout.MAX_W,
-                    onValue = { v -> onChanged(action, value.copy(w = v)) },
-                    modifier = Modifier.weight(1f)
-                )
-                MiniSlider(
-                    label = stringResource(R.string.controls_size_y),
-                    value = value.h,
-                    from = PadLayout.MIN_H,
-                    to = PadLayout.MAX_H,
-                    onValue = { v -> onChanged(action, value.copy(h = v)) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(4.dp))
+            // One square size knob: size is short-edge-based, so a single value
+            // keeps round buttons round.
+            MiniSlider(
+                label = stringResource(R.string.controls_size),
+                value = ((value.w + value.h) / 2f),
+                from = PadLayout.MIN_W,
+                to = PadLayout.MAX_W,
+                onValue = { v -> onChanged(action, value.copy(w = v, h = v)) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(2.dp))
             MiniSlider(
                 label = stringResource(R.string.controls_opacity),
                 value = value.opacity,

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -56,10 +57,10 @@ import java.util.Date
 /**
  * One professional full-screen panel at a time.
  *
- * The game behind is paused while a panel is open and the panel is opaque, so the
- * user never sees "two screens" fighting: game surface + sheet. The tab row lets
- * the user switch between save states, cheats, settings and the control editor
- * without closing anything.
+ * The panel is opaque and edge-to-edge, so the user never sees two screens
+ * fighting for attention (game surface + sheet). When opened during play the
+ * game is paused; it can also be opened from the library, where the state/cheat
+ * tabs are hidden (there is nothing to act on without a cartridge).
  */
 @Composable
 fun SheetHost(
@@ -67,30 +68,36 @@ fun SheetHost(
     vm: EmulatorViewModel,
     onDismiss: () -> Unit,
     onSelect: (Sheet) -> Unit,
+    inGame: Boolean = true,
 ) {
     // Pause while any panel is open; resume on dismiss. One screen at a time.
-    DisposableEffect(Unit) {
-        val wasPaused = vm.paused
-        if (!wasPaused) vm.setPaused(true)
+    DisposableEffect(inGame) {
+        val wasPaused = if (inGame) vm.paused else true
+        if (inGame && !wasPaused) vm.setPaused(true)
         onDispose {
-            if (!wasPaused && vm.cartridge != null) vm.setPaused(false)
+            if (inGame && !wasPaused && vm.cartridge != null) vm.setPaused(false)
         }
     }
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            decorFitsSystemWindows = false,
+        )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MarioBoxColors.HeroGradient)
-                .padding(horizontal = 10.dp, vertical = 10.dp),
+                .background(MarioBoxColors.Background)
+                .systemBarsPadding(),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(8.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .border(1.dp, MarioBoxColors.SurfaceBorderGlow, RoundedCornerShape(22.dp))
                     .shadow(16.dp, RoundedCornerShape(22.dp), spotColor = MarioBoxColors.PrimaryRed),
@@ -100,7 +107,7 @@ fun SheetHost(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(10.dp)
+                        .padding(12.dp)
                 ) {
                     // Header -------------------------------------------------
                     Row(
@@ -117,52 +124,78 @@ fun SheetHost(
                         IconButton(
                             onClick = onDismiss,
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(MarioBoxColors.Surface)
                         ) {
-                            Text("✕", color = MarioBoxColors.TextSecondary, fontSize = 13.sp)
+                            Text("✕", color = MarioBoxColors.TextSecondary, fontSize = 14.sp)
                         }
                     }
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     // Tabs ---------------------------------------------------
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        PanelTab(stringResource(R.string.states_title), "💾", sheet == Sheet.States) {
-                            onSelect(Sheet.States)
-                        }
-                        PanelTab(stringResource(R.string.cheats_title), "🔮", sheet == Sheet.Cheats) {
-                            onSelect(Sheet.Cheats)
+                        if (inGame) {
+                            PanelTab(stringResource(R.string.states_title), "💾", sheet == Sheet.States) {
+                                onSelect(Sheet.States)
+                            }
+                            PanelTab(stringResource(R.string.cheats_title), "🔮", sheet == Sheet.Cheats) {
+                                onSelect(Sheet.Cheats)
+                            }
                         }
                         PanelTab(stringResource(R.string.settings_title), "⚙️", sheet == Sheet.Settings) {
                             onSelect(Sheet.Settings)
                         }
-                        PanelTab(stringResource(R.string.controls_title), "🎛", sheet == Sheet.Controls) {
-                            onSelect(Sheet.Controls)
+                        if (inGame) {
+                            PanelTab(stringResource(R.string.controls_title), "🎛", sheet == Sheet.Controls) {
+                                onSelect(Sheet.Controls)
+                            }
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Box(modifier = Modifier.weight(1f)) {
                         when (sheet) {
-                            Sheet.States -> StatesSheet(vm)
-                            Sheet.Cheats -> CheatsScreen(vm)
+                            Sheet.States -> if (inGame) StatesSheet(vm) else EmptyPanel(stringResource(R.string.cheats_need_game))
+                            Sheet.Cheats -> if (inGame) CheatsScreen(vm) else EmptyPanel(stringResource(R.string.cheats_need_game))
                             Sheet.Settings -> SettingsScreen(
                                 vm = vm,
                                 onOpenControlsEditor = { onSelect(Sheet.Controls) }
                             )
-                            Sheet.Controls -> ControlsEditor(vm, onDone = onDismiss)
+                            Sheet.Controls -> if (inGame) ControlsEditor(vm, onDone = onDismiss)
+                                             else ControlsEditorStandalone(vm, onDone = { onSelect(Sheet.Settings) })
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun EmptyPanel(message: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            message,
+            color = MarioBoxColors.TextTertiary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * The control editor opened from the library: there is no live game, but the
+ * user can still design their pad and it will be waiting when a game starts.
+ */
+@Composable
+private fun ControlsEditorStandalone(vm: EmulatorViewModel, onDone: () -> Unit) {
+    ControlsEditor(vm, onDone = onDone)
 }
 
 @Composable
@@ -180,16 +213,16 @@ private fun RowScope.PanelTab(label: String, icon: String, selected: Boolean, on
             )
     ) {
         Row(
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = 9.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(icon, fontSize = 12.sp)
+            Text(icon, fontSize = 13.sp)
             Spacer(Modifier.width(4.dp))
             Text(
                 label,
                 maxLines = 1,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 color = if (selected) Color.White else MarioBoxColors.TextPrimary
             )
@@ -214,20 +247,20 @@ private fun StatesSheet(vm: EmulatorViewModel) {
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Text(stringResource(R.string.states_quick_save), color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.states_quick_save), color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 12.sp)
             }
             OutlinedButton(
                 onClick = { vm.quickLoad(); refresh++ },
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Text(stringResource(R.string.states_quick_load), color = MarioBoxColors.TextPrimary)
+                Text(stringResource(R.string.states_quick_load), color = MarioBoxColors.TextPrimary, maxLines = 1, fontSize = 12.sp)
             }
             OutlinedButton(
                 onClick = { vm.flushBattery() },
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("🔋 " + stringResource(R.string.battery_flush), color = MarioBoxColors.AccentGreen, fontSize = 11.sp)
+                Text("🔋", fontSize = 13.sp)
             }
         }
 
@@ -308,7 +341,9 @@ private fun SlotCell(
                 label,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = MarioBoxColors.TextPrimary
+                color = MarioBoxColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             if (present) {

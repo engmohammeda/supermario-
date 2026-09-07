@@ -155,6 +155,12 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
                     replaySurface()
                     if (engine.cheats().isEmpty()) restoreCheats() else reloadCheatList()
                     options = engine.options()
+                    // FCEUmm seeds its option table asynchronously during the first
+                    // frames; re-assert colour + overrides after it settles so the
+                    // authentic palette can never be replaced by the core's internal
+                    // default mid-game.
+                    assertCoreOptionsAgain()
+                    captureCoverArt(c)
                 }.onFailure { t ->
                     error = t.message ?: s(R.string.load_failed_generic)
                 }
@@ -305,6 +311,24 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
 
     fun nudgeZoom(delta: Float) = setZoom(prefs.zoom + delta)
 
+    /**
+     * Grabs a frame a few seconds into play and stores it as the cartridge's cover
+     * art in the library. By then the title screen is up, which is exactly the
+     * "thumbnail that shows the game" the library wants. Runs once per session and
+     * never overwrites a cover if the frame is not ready yet.
+     */
+    private fun captureCoverArt(cart: Cartridge) {
+        viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(4000)
+            if (!engine.active) return@launch
+            // Keep the first cover captured for this cartridge.
+            val coverFile = library.thumbnailFor(cart)
+            if (coverFile.isFile) return@launch
+            val bmp = engine.frameBitmap(maxWidth = 320) ?: return@launch
+            library.saveThumbnail(cart, bmp)
+        }
+    }
+
     // ------------------------------------------------------------------ palette
     /**
      * Sets the core's colour palette and keeps the choice in preferences. FCEUmm
@@ -320,10 +344,30 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
 
     private fun applyCoreDefaults() {
         if (!engine.active) return
-        // The original FCEU default palette is a 1990s 5-bit approximation; the
-        // authentic PPU colours come from the core's Nintendo RGB PPU table, which
+        // The authentic colours come from the core's Nintendo RGB PPU table, which
         // is what "ألوان اللعبة الأصلية" means in the settings screen.
         engine.setOption(PALETTE_OPTION, prefs.palette)
+    }
+
+    /**
+     * Re-asserts the palette (and any user overrides) a moment after the core has
+     * built its option table. FCEUmm reports its defaults during the first frames
+     * and can overwrite a value set too early; applying twice costs nothing and
+     * makes the colour choice deterministic.
+     */
+    private fun assertCoreOptionsAgain() {
+        viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(900)
+            if (!engine.active) return@launch
+            applyCoreDefaults()
+            applyOptionOverrides()
+            withContext(Dispatchers.Main) {
+                if (engine.active) options = engine.options()
+            }
+            kotlinx.coroutines.delay(2500)
+            if (!engine.active) return@launch
+            applyCoreDefaults()
+        }
     }
 
     fun flushBattery() {

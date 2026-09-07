@@ -81,12 +81,26 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("sram", true)
         set(v) = sp.edit().putBoolean("sram", v).apply()
 
-    /** Which overlay preset to draw; the custom editor maps this to a saved map. */
+    /**
+     * Which overlay preset to draw; the custom editor maps this to a saved map.
+     * Default is the professional classic pad (D-pad left, A/B right, START/SELECT
+     * bottom-centre). A one-time migration moves installs that were silently
+     * shipped the experimental "both/one-hand" default onto CLASSIC, because that
+     * preset scattered buttons across the middle of the screen.
+     */
     var overlayLayout: Int
         get() = try {
-            sp.getInt("overlay_layout", LAYOUT_BOTH)
+            val raw = sp.getInt("overlay_layout", LAYOUT_CLASSIC)
+            val migrated = sp.getBoolean("overlay_layout_v2", false)
+            if (!migrated) {
+                sp.edit().putBoolean("overlay_layout_v2", true).apply()
+                // The old default index (2, "both") was a one-handed cluster; keep
+                // an explicitly chosen mirror/custom, repair the shipped default.
+                return if (raw == LAYOUT_BOTH) LAYOUT_CLASSIC else raw
+            }
+            raw
         } catch (e: Exception) {
-            LAYOUT_BOTH
+            LAYOUT_CLASSIC
         }
         set(v) = sp.edit().putInt("overlay_layout", v.coerceIn(0, 3)).apply()
 

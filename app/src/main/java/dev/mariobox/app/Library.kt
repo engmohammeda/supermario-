@@ -79,8 +79,37 @@ class Library(private val context: Context, private val prefs: Prefs) {
     /** Removes the copy only: progress files are kept unless [deleteSaves] says otherwise. */
     fun remove(cartridge: Cartridge, deleteSaves: Boolean = false): Boolean {
         val ok = cartridge.file.delete()
+        if (ok) thumbnailFor(cartridge).delete()
         if (deleteSaves && ok) prefs.saveDirFor(cartridge.file).deleteRecursively()
         return ok
+    }
+
+    /**
+     * Cover art for a cartridge: a `cover.png` next to the ROM, captured from the
+     * running game. Missing files are the normal case for a freshly imported ROM.
+     */
+    fun thumbnailFor(cartridge: Cartridge): File =
+        File(cartridge.file.parentFile, cartridge.file.nameWithoutExtension + ".cover.png")
+
+    fun loadThumbnail(cartridge: Cartridge): android.graphics.Bitmap? {
+        val f = thumbnailFor(cartridge)
+        if (!f.isFile) return null
+        return runCatching {
+            android.graphics.BitmapFactory.decodeFile(f.absolutePath)
+        }.getOrNull()
+    }
+
+    /**
+     * Persists the given frame as the cartridge cover art. Called from the game
+     * screen (auto, a few seconds in, and on quick-save) so every game the user
+     * actually plays ends up with real artwork instead of an emoji placeholder.
+     */
+    fun saveThumbnail(cartridge: Cartridge, bitmap: android.graphics.Bitmap) {
+        runCatching {
+            thumbnailFor(cartridge).outputStream().use { out ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, out)
+            }
+        }
     }
 
     private fun header(file: File): INesHeader.Info = try {

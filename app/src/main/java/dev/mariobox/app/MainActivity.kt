@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
 fun MarioBoxApp(vm: EmulatorViewModel, showGame: Boolean, onShowGame: (Boolean) -> Unit) {
     var sheet by remember { mutableStateOf<Sheet?>(null) }
     var showLegalDialog by remember { mutableStateOf(!vm.prefs.legalAcknowledged) }
+    val inGame = showGame && vm.cartridge != null
 
     MarioBoxTheme {
         Box(
@@ -94,7 +95,7 @@ fun MarioBoxApp(vm: EmulatorViewModel, showGame: Boolean, onShowGame: (Boolean) 
                 .fillMaxSize()
                 .background(if (showGame) Color.Black else MarioBoxColors.Background)
         ) {
-            if (showGame && vm.cartridge != null) {
+            if (inGame) {
                 GameScreen(
                     vm = vm,
                     onBack = {
@@ -110,6 +111,7 @@ fun MarioBoxApp(vm: EmulatorViewModel, showGame: Boolean, onShowGame: (Boolean) 
                         onShowGame(true)
                         vm.start(c)
                     },
+                    onOpenSettings = { sheet = Sheet.Settings },
                 )
             }
 
@@ -119,6 +121,7 @@ fun MarioBoxApp(vm: EmulatorViewModel, showGame: Boolean, onShowGame: (Boolean) 
                     vm = vm,
                     onDismiss = { sheet = null },
                     onSelect = { sheet = it },
+                    inGame = inGame,
                 )
             }
 

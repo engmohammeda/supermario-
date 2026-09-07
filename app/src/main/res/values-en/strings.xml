@@ -92,6 +92,7 @@
     <string name="controls_select_hint">Pick a button from the strip above or tap it on the canvas.</string>
     <string name="controls_selected">Selected: %1$s</string>
     <string name="controls_size_x">Width</string>
+    <string name="controls_size">Size</string>
     <string name="controls_size_y">Height</string>
     <string name="controls_opacity">Opacity</string>
     <string name="cheats_search">Search cheat library…</string>
@@ -113,6 +114,7 @@
     <string name="cheats_rejected">The core rejected that cheat: %1$s</string>
     <string name="option_failed">Could not set that option: %1$s</string>
     <string name="settings_overlay">Button overlay</string>
+    <string name="settings_gestures_hint">Gestures on the game picture: double-tap = show/hide the toolbar · long-press = quick save.</string>
     <string name="settings_autosave">Save battery RAM automatically</string>
     <string name="library_recent">Last Played</string>
     <string name="library_all_games">All Cartridges</string>

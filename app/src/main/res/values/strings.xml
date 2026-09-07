@@ -108,6 +108,7 @@
     <string name="controls_select_hint">اختر زرًا من الشريط أعلاه أو المسه على اللوحة لتعديله.</string>
     <string name="controls_selected">الزر المحدد: %1$s</string>
     <string name="controls_size_x">العرض</string>
+    <string name="controls_size">الحجم</string>
     <string name="controls_size_y">الارتفاع</string>
     <string name="controls_opacity">الشفافية</string>
 
@@ -131,6 +132,7 @@
     <string name="cheats_rejected">النواة رفضت الغشّة: %1$s</string>
     <string name="option_failed">تعذّر ضبط الخيار: %1$s</string>
     <string name="settings_overlay">طبقة الأزرار</string>
+    <string name="settings_gestures_hint">إيماءات على صورة اللعبة: نقرة مزدوجة = إظهار/إخفاء شريط الأدوات · ضغطة طويلة على الصورة = حفظ سريع · ضغطة طويلة على زر الحفظ 💾 = تحميل سريع.</string>
     <string name="settings_autosave">حفظ ذاكرة البطارية تلقائيًا</string>
     <string name="library_recent">آخر لعبة</string>
     <string name="library_all_games">جميع الألعاب</string>

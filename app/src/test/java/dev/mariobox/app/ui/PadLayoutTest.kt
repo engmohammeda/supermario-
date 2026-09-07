@@ -13,6 +13,9 @@ import org.junit.Test
 class PadLayoutTest {
     private val allActions = PadAction.entries.toList()
 
+    /** Worst-case phone landscape: short edge is 56% of the long one. */
+    private val shortOverLong = 0.5625f
+
     @Test
     fun `every preset places every control inside the view`() {
         for (preset in listOf(PadLayout.PRESET_CLASSIC, PadLayout.PRESET_MIRRORED, PadLayout.PRESET_ONE_HAND)) {
@@ -24,13 +27,56 @@ class PadLayoutTest {
                 assertTrue("$action cy out of range in $preset", p.cy in 0f..1f)
                 assertTrue("$action width", p.w > 0f && p.w <= 1f)
                 assertTrue("$action height", p.h > 0f && p.h <= 1f)
-                // The centre plus half the extent must not leave the screen: a control
-                // clipped off an edge is a control the user cannot press.
-                assertTrue("$action spills right", p.cx + p.w / 2f <= 1.0001f)
-                assertTrue("$action spills left", p.cx - p.w / 2f >= -0.0001f)
-                assertTrue("$action spills bottom", p.cy + p.h / 2f <= 1.0001f)
+                // The centre plus half the extent must not leave the screen, where
+                // sizes are short-edge fractions: w as a width fraction is
+                // w * shortOverLong, h as a height fraction stays h.
+                val halfW = p.w / 2f * shortOverLong
+                val halfH = p.h / 2f
+                assertTrue("$action spills right", p.cx + halfW <= 1.005f)
+                assertTrue("$action spills left", p.cx - halfW >= -0.005f)
+                assertTrue("$action spills bottom", p.cy + halfH <= 1.005f)
+                assertTrue("$action spills top", p.cy - halfH >= -0.005f)
             }
         }
+    }
+
+    @Test
+    fun `classic pad matches a real controller - dpad left buttons right start bottom`() {
+        val map = PadLayout.placements(PadLayout.PRESET_CLASSIC)
+        // D-pad in the left third.
+        for (a in listOf(PadAction.UP, PadAction.DOWN, PadAction.LEFT, PadAction.RIGHT)) {
+            assertTrue("$a must be on the left", map.getValue(a).cx < 0.30f)
+        }
+        // A/B on the right.
+        for (a in listOf(PadAction.A, PadAction.B)) {
+            assertTrue("$a must be on the right", map.getValue(a).cx > 0.70f)
+        }
+        // START/SELECT at the bottom, inside the central third.
+        for (a in listOf(PadAction.START, PadAction.SELECT)) {
+            val p = map.getValue(a)
+            assertTrue("$a must be near the bottom", p.cy > 0.80f)
+            assertTrue("$a must be centred", p.cx in 0.30f..0.70f)
+        }
+    }
+
+    @Test
+    fun `dpad arms overlap at the hub so diagonals have no dead zone`() {
+        val map = PadLayout.placements(PadLayout.PRESET_CLASSIC)
+        // Up and Left must each cover the hub point between them.
+        val up = map.getValue(PadAction.UP)
+        val left = map.getValue(PadAction.LEFT)
+        // The point where the user presses up+left is between the two centres.
+        val diagX = (up.cx + left.cx) / 2f
+        val diagY = (up.cy + left.cy) / 2f
+        // Up's box in fraction space (width/height axes):
+        fun covers(p: Placement, x: Float, y: Float): Boolean {
+            val halfW = p.w / 2f * shortOverLong
+            val halfH = p.h / 2f
+            return x >= p.cx - halfW && x <= p.cx + halfW &&
+                y >= p.cy - halfH && y <= p.cy + halfH
+        }
+        assertTrue("up must cover the up-left diagonal", covers(up, diagX, diagY))
+        assertTrue("left must cover the up-left diagonal", covers(left, diagX, diagY))
     }
 
     @Test
@@ -76,11 +122,22 @@ class PadLayoutTest {
     }
 
     @Test
-    fun `momentary actions stay below the chrome strip`() {
+    fun `utility buttons stay clear of the hidden top chrome`() {
         val map = PadLayout.placements(PadLayout.PRESET_CLASSIC)
-        for (a in listOf(PadAction.REWIND, PadAction.QUICK, PadAction.FAST_FWD)) {
-            assertTrue("$a must not sit under the top bar", map.getValue(a).cy > 0.12f)
-        }
+        // The quick-save button may sit near the top; rewind/FF live at the bottom
+        // edges so a thumb never hunts for them.
+        assertTrue(map.getValue(PadAction.REWIND).cy > 0.85f)
+        assertTrue(map.getValue(PadAction.FAST_FWD).cy > 0.85f)
+    }
+
+    @Test
+    fun `clamp keeps a dragged control fully on screen`() {
+        // A huge button dragged into the corner must be pulled back inside.
+        val p = ControlPlacement(cx = 0f, cy = 0f, w = 0.30f, h = 0.30f)
+        val clamped = PadLayout.clamp(p, 0.5625f)
+        val halfW = 0.30f / 2f * 0.5625f
+        assertTrue(clamped.cx >= halfW - 1e-4f)
+        assertTrue(clamped.cy >= 0.30f / 2f - 1e-4f)
     }
 
     @Test

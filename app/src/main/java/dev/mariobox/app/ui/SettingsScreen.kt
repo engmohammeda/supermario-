@@ -41,18 +41,30 @@ import dev.mariobox.app.EmulatorViewModel
 import dev.mariobox.app.R
 import dev.mariobox.engine.RenderSettings
 
-/** Palette options exposed by FCEUmm; default = the authentic PPU colours. */
+/**
+ * Palette options exposed by FCEUmm Next. The keys are the core's own option
+ * values (libretro/paldef.h); the first entry is the authentic NES PPU colours —
+ * the table that shipped on real hardware and the look people remember from
+ * Super Mario Bros.
+ */
 object MarioPalettes {
     val options = listOf(
-        "rgb" to "ألوان PPU الأصلية",
-        "nintendo-vc" to "Virtual Console",
-        "sony-cxa2025as-us" to "CXA2025AS (US)",
+        "rgb" to "ألوان NES الأصلية (موصى به)",
+        "asqrealc" to "AspiringSquire Real",
+        "nintendo-vc" to "Virtual Console (Wii)",
+        "nes-classic-fbx-fs" to "NES Classic Edition",
+        "sony-cxa2025as-us" to "شاشة CRT أمريكية (CXA2025)",
+        "ntsc-hardware-fbx" to "NTSC حقيقي",
+        "pvm-style-d93-fbx" to "شاشة PVM احترافية",
+        "composite-direct-fbx" to "Composit (كابل أصفر)",
         "nescap" to "NESCAP",
         "bmf-final2" to "BMF Final 2",
         "bmf-final3" to "BMF Final 3",
         "wavebeam" to "Wavebeam",
-        "pal" to "PAL",
-        "default" to "الافتراضية القديمة",
+        "yuv-v3" to "YUV v3",
+        "unsaturated-final" to "ألوان هادئة",
+        "smooth-fbx" to "Smooth FBX",
+        "default" to "جدول النواة الداخلي",
     )
 
     fun indexOf(key: String): Int = options.indexOfFirst { it.first == key }.coerceAtLeast(0)
@@ -187,6 +199,22 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
 
                 SwitchRow(stringResource(R.string.settings_overlay), prefs.overlayVisible) {
                     prefs.overlayVisible = it
+                }
+
+                // Gesture hints, always on: quick helpers on the game picture.
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MarioBoxColors.Surface)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.settings_gestures_hint),
+                        color = MarioBoxColors.TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
                 }
 
                 SliderRow(

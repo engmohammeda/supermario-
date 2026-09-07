@@ -4,8 +4,13 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -75,6 +81,8 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
     DisposableEffect(Unit) {
         val activity = context as? Activity
         val previous = activity?.requestedOrientation
+        // Lock to landscape for the whole play session: no mid-game rotation can
+        // ever leave the picture half-drawn in a portrait window.
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         onDispose {
             activity?.requestedOrientation = previous ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -83,11 +91,20 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
     }
 
     var ff by remember { mutableStateOf(false) }
+    // The top chrome auto-hides so the screen shows ONE thing: the game. Tapping
+    // the small floating tab brings it back.
+    var chromeVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         while (true) {
             vm.pollStats()
             delay(250)
+        }
+    }
+    LaunchedEffect(chromeVisible) {
+        if (chromeVisible) {
+            delay(3500)
+            chromeVisible = false
         }
     }
 
@@ -96,28 +113,42 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Core SurfaceView -- the only game screen
-        AndroidView(
-            factory = { ctx ->
-                SurfaceView(ctx).apply {
-                    holder.addCallback(object : SurfaceHolder.Callback {
-                        override fun surfaceCreated(h: SurfaceHolder) {
-                            vm.attachSurface(h.surface)
-                        }
-                        override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {
-                            vm.resizeSurface(w, hh)
-                            vm.attachSurface(h.surface)
-                        }
-                        override fun surfaceDestroyed(h: SurfaceHolder) {
-                            vm.detachSurface()
-                        }
-                    })
+        // Core SurfaceView -- the only game screen, full bleed. The gesture
+        // detector lives on this wrapper (below the controls layer): the pad
+        // buttons always get first refusal of a touch, so a double-tap/long-press
+        // only reaches here when it lands on the open game picture.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { vm.quickSave() },
+                        onDoubleTap = { chromeVisible = !chromeVisible },
+                    )
                 }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    SurfaceView(ctx).apply {
+                        holder.addCallback(object : SurfaceHolder.Callback {
+                            override fun surfaceCreated(h: SurfaceHolder) {
+                                vm.attachSurface(h.surface)
+                            }
+                            override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {
+                                vm.resizeSurface(w, hh)
+                                vm.attachSurface(h.surface)
+                            }
+                            override fun surfaceDestroyed(h: SurfaceHolder) {
+                                vm.detachSurface()
+                            }
+                        })
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
-        // Custom On-Screen Virtual Controller
+        // Custom On-Screen Virtual Controller (the real gamepad).
         if (vm.prefs.overlayVisible) {
             val labels = OverlayLabels.map()
             val customMap = vm.prefs.customControlMap()
@@ -139,49 +170,67 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
                         }
                         else -> Unit
                     }
+                },
+                onLongTap = { action ->
+                    when (action) {
+                        // Long-press the floppy to restore the quick-save state.
+                        PadAction.QUICK -> vm.quickLoad()
+                        else -> Unit
+                    }
                 }
             )
         }
 
-        // One clean top bar: HUD left, actions right. No second "screen".
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        // Floating tab that brings the chrome back when it has auto-hidden.
+        AnimatedVisibility(
+            visible = !chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
         ) {
-            GameHudOverlay(vm)
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .padding(top = 6.dp)
+                    .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
+                    .background(MarioBoxColors.SurfaceElevated.copy(alpha = 0.75f))
+                    .clickable { chromeVisible = true }
+                    .padding(horizontal = 22.dp, vertical = 4.dp)
             ) {
-                QuickBarButton(
-                    icon = if (vm.paused) "▶" else "⏸",
-                    isHighlight = vm.paused,
-                    onClick = { vm.togglePause() }
-                )
-                QuickBarButton(
-                    icon = "💾",
-                    onClick = { onSheet(Sheet.States) }
-                )
-                QuickBarButton(
-                    icon = "🔮",
-                    onClick = { onSheet(Sheet.Cheats) }
-                )
-                QuickBarButton(
-                    icon = "🎛",
-                    onClick = { onSheet(Sheet.Controls) }
-                )
-                QuickBarButton(
-                    icon = "⚙️",
-                    onClick = { onSheet(Sheet.Settings) }
-                )
-                QuickBarButton(
-                    icon = "🚪",
-                    onClick = onBack
-                )
+                Text("⋮", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // One clean top bar: HUD left, actions right. Auto-hidden after a few sec.
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.28f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                GameHudOverlay(vm)
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    QuickBarButton(
+                        icon = if (vm.paused) "▶" else "⏸",
+                        isHighlight = vm.paused,
+                        onClick = { vm.togglePause() }
+                    )
+                    QuickBarButton(icon = "💾", onClick = { onSheet(Sheet.States) })
+                    QuickBarButton(icon = "🔮", onClick = { onSheet(Sheet.Cheats) })
+                    QuickBarButton(icon = "🎛", onClick = { onSheet(Sheet.Controls) })
+                    QuickBarButton(icon = "⚙️", onClick = { onSheet(Sheet.Settings) })
+                    QuickBarButton(icon = "🚪", onClick = onBack)
+                }
             }
         }
 
@@ -206,8 +255,8 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
             LuxuryToastBar(
                 message = message,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 72.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp)
             )
             LaunchedEffect(message) {
                 delay(2600)
@@ -231,8 +280,8 @@ private fun QuickBarButton(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        color = if (isHighlight) MarioBoxColors.PrimaryRed.copy(alpha = 0.9f)
-        else MarioBoxColors.SurfaceElevated.copy(alpha = 0.85f),
+        color = if (isHighlight) MarioBoxColors.PrimaryRed.copy(alpha = 0.92f)
+        else MarioBoxColors.SurfaceElevated.copy(alpha = 0.88f),
         modifier = Modifier.border(
             1.dp,
             if (isHighlight) MarioBoxColors.PrimaryRed else MarioBoxColors.SurfaceBorder,

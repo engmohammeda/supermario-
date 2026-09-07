@@ -2,12 +2,8 @@ package dev.mariobox.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +53,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -73,7 +71,11 @@ import dev.mariobox.engine.INesHeader
 import kotlinx.coroutines.delay
 
 @Composable
-fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit) {
+fun LibraryScreen(
+    vm: EmulatorViewModel,
+    onPlay: (Cartridge) -> Unit,
+    onOpenSettings: () -> Unit = {},
+) {
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
@@ -107,7 +109,8 @@ fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit) {
             // Top Bar Header with brand glow
             HeaderSection(
                 totalCount = items.size,
-                onImport = { importLauncher.launch(arrayOf("*/*")) }
+                onImport = { importLauncher.launch(arrayOf("*/*")) },
+                onSettings = onOpenSettings
             )
 
             // Search & Filter Box
@@ -279,7 +282,7 @@ fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit) {
 }
 
 @Composable
-private fun HeaderSection(totalCount: Int, onImport: () -> Unit) {
+private fun HeaderSection(totalCount: Int, onImport: () -> Unit, onSettings: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -311,34 +314,50 @@ private fun HeaderSection(totalCount: Int, onImport: () -> Unit) {
             )
         }
 
-        // Action Button: Add ROM
-        Surface(
-            onClick = onImport,
-            shape = RoundedCornerShape(14.dp),
-            color = Color.Transparent,
-            modifier = Modifier
-                .shadow(8.dp, RoundedCornerShape(14.dp), spotColor = MarioBoxColors.PrimaryRed)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MarioBoxColors.PrimaryGradient)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Settings — display & control customization from the main screen.
+            Surface(
+                onClick = onSettings,
+                shape = RoundedCornerShape(14.dp),
+                color = MarioBoxColors.SurfaceElevated,
+                modifier = Modifier
+                    .size(40.dp)
+                    .border(1.dp, MarioBoxColors.SurfaceBorderGlow, RoundedCornerShape(14.dp))
             ) {
-                Text(
-                    text = "＋",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.library_import),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Text("⚙️", fontSize = 18.sp)
+                }
+            }
+
+            // Action Button: Add ROM
+            Surface(
+                onClick = onImport,
+                shape = RoundedCornerShape(14.dp),
+                color = Color.Transparent,
+                modifier = Modifier
+                    .shadow(8.dp, RoundedCornerShape(14.dp), spotColor = MarioBoxColors.PrimaryRed)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MarioBoxColors.PrimaryGradient)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "＋",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.library_import),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
             }
         }
     }
@@ -513,27 +532,32 @@ private fun CartridgeCard(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Cartridge Graphic Badge
+            // Cover art: the real game thumbnail captured from play, falling back
+            // to a cartridge badge for games that have never run.
+            val cover = remember(cartridge.path) { vm.library.loadThumbnail(cartridge) }
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (isLastPlayed) MarioBoxColors.PrimaryRed.copy(alpha = 0.2f)
-                        else MarioBoxColors.SurfaceElevated
-                    )
+                    .size(width = 58.dp, height = 46.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black)
                     .border(
                         1.dp,
-                        if (isLastPlayed) MarioBoxColors.PrimaryRed.copy(alpha = 0.5f)
+                        if (isLastPlayed) MarioBoxColors.PrimaryRed.copy(alpha = 0.6f)
                         else MarioBoxColors.SurfaceBorderGlow,
-                        RoundedCornerShape(12.dp)
+                        RoundedCornerShape(10.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "🎮",
-                    fontSize = 20.sp
-                )
+                if (cover != null) {
+                    Image(
+                        bitmap = cover.asImageBitmap(),
+                        contentDescription = cartridge.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(text = "🎮", fontSize = 20.sp)
+                }
             }
 
             Spacer(Modifier.width(14.dp))
