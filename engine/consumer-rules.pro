@@ -2,7 +2,7 @@
 -keepclasseswithmembernames,includedescriptorclasses class dev.mariobox.engine.** {
     native <methods>;
 }
--keep class dev.mariobox.engine.MbEngine { *; }
+-keep class dev.mariobox.engine.** { *; }
 
 # The host calls back with GetMethodID(cls, "onEngineEvent", "(ILjava/lang/String;)V").
 # That string is hardcoded in C++, so the interface's method name has to survive

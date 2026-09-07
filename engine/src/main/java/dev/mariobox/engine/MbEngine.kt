@@ -18,17 +18,78 @@ object Cores {
 
     fun dir(context: Context): File = File(context.applicationInfo.nativeLibraryDir)
 
-    fun path(context: Context, name: String = FCEUMM): String = File(dir(context), name).absolutePath
+    /** Ensure the requested core is present on disk (extracting from APK if not extracted by system). */
+    fun ensureCore(context: Context, name: String = FCEUMM): File {
+        val sysFile = File(dir(context), name)
+        if (sysFile.isFile && sysFile.length() > 0) return sysFile
+
+        val customDir = File(context.filesDir, "mb_cores").apply { mkdirs() }
+        val extractedFile = File(customDir, name)
+        if (extractedFile.isFile && extractedFile.length() > 0) return extractedFile
+
+        // Extract directly from APK if system didn't extract native libs to nativeLibraryDir
+        try {
+            val apkPath = context.applicationInfo.sourceDir
+            java.util.zip.ZipFile(apkPath).use { zip ->
+                val supportedAbis = android.os.Build.SUPPORTED_ABIS
+                var targetEntry: java.util.zip.ZipEntry? = null
+                for (abi in supportedAbis) {
+                    val entry = zip.getEntry("lib/$abi/$name")
+                    if (entry != null) {
+                        targetEntry = entry
+                        break
+                    }
+                }
+                if (targetEntry == null) {
+                    val entries = zip.entries()
+                    while (entries.hasMoreElements()) {
+                        val e = entries.nextElement()
+                        if (e.name.endsWith("/$name")) {
+                            targetEntry = e
+                            break
+                        }
+                    }
+                }
+                targetEntry?.let { entry ->
+                    zip.getInputStream(entry).use { input ->
+                        extractedFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    extractedFile.setReadable(true, false)
+                    extractedFile.setExecutable(true, false)
+                    return extractedFile
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return sysFile
+    }
+
+    fun path(context: Context, name: String = FCEUMM): String = ensureCore(context, name).absolutePath
 
     /** Cores actually present in the APK, as short names ("fceumm"). */
-    fun available(context: Context): List<String> =
-        dir(context).listFiles()?.asSequence()
-            ?.map { it.name }
-            ?.filter { it.startsWith("libmbcore_") && it.endsWith(".so") }
-            ?.map { it.removePrefix("libmbcore_").removeSuffix(".so") }
-            ?.sorted()
-            ?.toList()
-            ?: emptyList()
+    fun available(context: Context): List<String> {
+        val list = mutableSetOf<String>()
+        dir(context).listFiles()?.forEach {
+            if (it.name.startsWith("libmbcore_") && it.name.endsWith(".so")) {
+                list.add(it.name.removePrefix("libmbcore_").removeSuffix(".so"))
+            }
+        }
+        val customDir = File(context.filesDir, "mb_cores")
+        customDir.listFiles()?.forEach {
+            if (it.name.startsWith("libmbcore_") && it.name.endsWith(".so")) {
+                list.add(it.name.removePrefix("libmbcore_").removeSuffix(".so"))
+            }
+        }
+        // Always verify default core availability via ensureCore
+        val defaultCore = ensureCore(context, FCEUMM)
+        if (defaultCore.isFile && defaultCore.length() > 0) {
+            list.add("fceumm")
+        }
+        return list.sorted()
+    }
 }
 
 class EngineException(message: String, val status: Int = MbStatus.INVALID) : Exception(message)

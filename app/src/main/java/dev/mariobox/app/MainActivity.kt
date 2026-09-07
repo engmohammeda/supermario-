@@ -6,20 +6,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,26 +31,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.activity.viewModels
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.mariobox.app.ui.GameScreen
 import dev.mariobox.app.ui.LibraryScreen
+import dev.mariobox.app.ui.MarioBoxColors
 import dev.mariobox.app.ui.MarioBoxTheme
-import dev.mariobox.app.ui.SheetHost
 import dev.mariobox.app.ui.Sheet
+import dev.mariobox.app.ui.SheetHost
 import dev.mariobox.engine.Cores
 
-/**
- * The whole app is one Activity with two screens, and no navigation library.
- *
- * A launcher, a library list, a game surface and three modal sheets do not need a
- * navigation graph, and every navigation dependency in an APK that must survive an
- * emulator's surface lifecycle is another thing that can recreate the Activity
- * underneath a running core. `configChanges` in the manifest plus this structure
- * means the emulation session is created exactly once per cartridge and released
- * exactly once when the user leaves.
- */
 class MainActivity : ComponentActivity() {
     private val vm: EmulatorViewModel by viewModels()
 
@@ -62,7 +58,6 @@ class MainActivity : ComponentActivity() {
         consumeViewIntent(intent)
     }
 
-    /** A `.nes` opened from a file manager: import it and go straight to it. */
     private fun consumeViewIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val uri: Uri = intent.data ?: return
@@ -70,22 +65,12 @@ class MainActivity : ComponentActivity() {
         intent.data = null
     }
 
-    /**
-     * Hardware keyboards and Bluetooth gamepads both arrive here as KeyEvents. The
-     * mapping is in :engine's `Gamepad` (a pure table with unit tests), and this
-     * override only decides whether the event was ours.
-     */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean =
         vm.handleKey(keyCode, true) || super.onKeyDown(keyCode, event)
 
     override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean =
         vm.handleKey(keyCode, false) || super.onKeyUp(keyCode, event)
 
-    /**
-     * Losing focus is the moment an emulator must stop: AAudio will be taken from
-     * us anyway, and a core that keeps running in the background burns battery and
-     * desyncs its own audio clock. The host pauses on the next frame boundary.
-     */
     override fun onPause() {
         super.onPause()
         if (vm.cartridge != null) vm.setPaused(true)
@@ -96,21 +81,21 @@ class MainActivity : ComponentActivity() {
 fun MarioBoxApp(vm: EmulatorViewModel) {
     var showGame by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<Sheet?>(null) }
+    var showLegalDialog by remember { mutableStateOf(!vm.prefs.legalAcknowledged) }
 
     MarioBoxTheme {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(if (showGame) Color.Black else MaterialTheme.colorScheme.background)
+                .background(if (showGame) Color.Black else MarioBoxColors.Background)
         ) {
-            if (!vm.prefs.legalAcknowledged) {
-                OnboardingDialog(onOk = { vm.prefs.legalAcknowledged = true })
-            }
-
             if (showGame && vm.cartridge != null) {
                 GameScreen(
                     vm = vm,
-                    onBack = { showGame = false; vm.stopGame() },
+                    onBack = {
+                        showGame = false
+                        vm.stopGame()
+                    },
                     onSheet = { sheet = it },
                 )
             } else {
@@ -131,6 +116,15 @@ fun MarioBoxApp(vm: EmulatorViewModel) {
             if (Cores.available(context).none { it == "fceumm" } && !showGame) {
                 MissingCoreBanner()
             }
+
+            if (showLegalDialog) {
+                OnboardingDialog(
+                    onOk = {
+                        vm.prefs.legalAcknowledged = true
+                        showLegalDialog = false
+                    }
+                )
+            }
         }
     }
 }
@@ -138,47 +132,71 @@ fun MarioBoxApp(vm: EmulatorViewModel) {
 @Composable
 private fun OnboardingDialog(onOk: () -> Unit) {
     AlertDialog(
-        onDismissRequest = { },
-        confirmButton = { Button(onClick = onOk) { Text(stringResource(R.string.legal_ok)) } },
-        title = { Text(stringResource(R.string.app_name)) },
-        text = { Text(stringResource(R.string.legal_notice)) },
+        onDismissRequest = onOk,
+        containerColor = MarioBoxColors.SurfaceElevated,
+        shape = RoundedCornerShape(22.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🎮", fontSize = 24.sp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MarioBoxColors.TextPrimary
+                )
+            }
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.legal_notice),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MarioBoxColors.TextSecondary,
+                lineHeight = 22.sp
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onOk,
+                colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.legal_ok),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     )
 }
 
 @Composable
 private fun MissingCoreBanner() {
-    Box(Modifier.fillMaxSize().systemBarsPadding(), Alignment.BottomCenter) {
-        Row(
-            Modifier
-                .background(MaterialTheme.colorScheme.errorContainer)
-                .padding(12.dp)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(16.dp),
+        Alignment.BottomCenter
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.errorContainer
         ) {
-            Text(stringResource(R.string.core_missing), color = MaterialTheme.colorScheme.onErrorContainer)
-        }
-    }
-}
-
-/**
- * Immersive mode for as long as a game screen is on screen. Restoring on the way
- * out matters: a library list with hidden system bars is a list you cannot scroll
- * back from.
- */
-@Composable
-fun rememberImmersive(active: Boolean) {
-    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity ?: return
-    DisposableEffect(active) {
-        val controller = androidx.core.view.WindowCompat.getInsetsController(
-            activity.window, activity.window.decorView
-        )
-        if (active) {
-            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior =
-                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        } else {
-            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        }
-        onDispose {
-            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            Row(
+                Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("⚠️", fontSize = 16.sp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.core_missing),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

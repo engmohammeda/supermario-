@@ -82,4 +82,18 @@
     <string name="option_failed">Could not set that option: %1$s</string>
     <string name="settings_overlay">Button overlay</string>
     <string name="settings_autosave">Save battery RAM automatically</string>
+    <string name="library_recent">Last Played</string>
+    <string name="library_all_games">All Cartridges</string>
+    <string name="library_delete_confirm">Are you sure you want to remove this cartridge?</string>
+    <string name="library_delete_with_saves">Delete save states and SRAM too</string>
+    <string name="library_game_info">Cartridge Details</string>
+    <string name="library_total_count">%1$d games</string>
+    <string name="library_play_now">Play Now</string>
+    <string name="btn_menu">Menu</string>
+    <string name="btn_speed">Speed</string>
+    <string name="btn_rewind">Rewind</string>
+    <string name="btn_quick_save">Quick Save</string>
+    <string name="btn_pause">Pause</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
 </resources>

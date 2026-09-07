@@ -75,8 +75,12 @@ class Prefs(context: Context) {
 
     /** Which overlay preset to draw; the editor that moves individual buttons is M4. */
     var overlayLayout: Int
-        get() = sp.getInt("overlay", LAYOUT_BOTH)
-        set(v) = sp.edit().putInt("overlay", v.coerceIn(0, 2)).apply()
+        get() = try {
+            sp.getInt("overlay_layout", LAYOUT_BOTH)
+        } catch (e: Exception) {
+            LAYOUT_BOTH
+        }
+        set(v) = sp.edit().putInt("overlay_layout", v.coerceIn(0, 2)).apply()
 
     var turboHz: Int
         get() = sp.getInt("turbo_hz", 30)
@@ -93,8 +97,12 @@ class Prefs(context: Context) {
 
     /** Show the touch overlay; a gamepad user turns it off to reclaim the screen. */
     var overlayVisible: Boolean
-        get() = sp.getBoolean("overlay", true)
-        set(v) = sp.edit().putBoolean("overlay", v).apply()
+        get() = try {
+            sp.getBoolean("overlay_visible", true)
+        } catch (e: Exception) {
+            true
+        }
+        set(v) = sp.edit().putBoolean("overlay_visible", v).apply()
 
     var legalAcknowledged: Boolean
         get() = sp.getBoolean("legal_ok", false)

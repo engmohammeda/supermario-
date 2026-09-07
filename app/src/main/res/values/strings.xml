@@ -94,4 +94,18 @@
     <string name="option_failed">تعذّر ضبط الخيار: %1$s</string>
     <string name="settings_overlay">طبقة الأزرار</string>
     <string name="settings_autosave">حفظ ذاكرة البطارية تلقائيًا</string>
+    <string name="library_recent">آخر لعبة</string>
+    <string name="library_all_games">جميع الألعاب</string>
+    <string name="library_delete_confirm">هل أنت متأكد من إزالة هذه اللعبة؟</string>
+    <string name="library_delete_with_saves">حذف ملفات الحفظ أيضًا</string>
+    <string name="library_game_info">معلومات الروم</string>
+    <string name="library_total_count">%1$d لعبة</string>
+    <string name="library_play_now">تشغيل الآن</string>
+    <string name="btn_menu">القائمة</string>
+    <string name="btn_speed">تسريع</string>
+    <string name="btn_rewind">إرجاع</string>
+    <string name="btn_quick_save">حفظ سريع</string>
+    <string name="btn_pause">إيقاف مؤقت</string>
+    <string name="delete">حذف</string>
+    <string name="cancel">إلغاء</string>
 </resources>

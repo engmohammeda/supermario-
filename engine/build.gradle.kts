@@ -21,7 +21,7 @@ android {
         // Debug builds ship one ABI so a CI run does not sit through 650 C files
         // per ABI. Release adds the 32-bit phone and the emulator image.
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
         externalNativeBuild {
             cmake {
@@ -39,11 +39,11 @@ android {
 
     buildTypes {
         getByName("debug") {
-            ndk { abiFilters.clear(); abiFilters += listOf("arm64-v8a") }
+            ndk { abiFilters.clear(); abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         }
         getByName("release") {
             isMinifyEnabled = false
-            ndk { abiFilters += listOf("armeabi-v7a", "x86_64") }
+            ndk { abiFilters.clear(); abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
             externalNativeBuild { cmake { arguments("-DCMAKE_BUILD_TYPE=Release") } }
         }
     }

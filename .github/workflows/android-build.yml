@@ -125,3 +125,13 @@ jobs:
           name: MarioBox-apk
           path: out/*
           retention-days: 14
+
+      - name: Send Release APK to Telegram
+        if: success()
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN || '8459296920:AAGq6b6sguUQx0Abk7jbWFDma30v7Ncfbhc' }}
+          CHAT_ID: ${{ secrets.CHAT_ID || '5926222376' }}
+        run: |
+          APK_FILE="out/MarioBox-release-unsigned.apk"
+          [ -f "out/MarioBox-release.apk" ] && APK_FILE="out/MarioBox-release.apk"
+          python3 tools/send_apk_telegram.py "$APK_FILE" || true
