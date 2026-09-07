@@ -71,6 +71,7 @@ internal object MbNative {
         scanlinesPercent: Int,
         overscanCrop: Int,
         rotation: Int,
+        zoom: Float,
     )
 
     /** [meta] receives {width, height, pitch}; the return is RGBA bytes. */

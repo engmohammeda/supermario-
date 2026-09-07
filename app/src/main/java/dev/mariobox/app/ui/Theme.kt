@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Which full-screen sheet is open over the game. */
-enum class Sheet { States, Cheats, Settings }
+/** Which full-screen panel is open over the game. */
+enum class Sheet { States, Cheats, Settings, Controls }
 
 /**
  * Premium Arcade & Cyber-Retro Palette:

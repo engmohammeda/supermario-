@@ -4,6 +4,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// CI injects versionName/versionCode from git tags ("v0.2.0" etc.); local builds
+// fall back to the checked-in 0.2.0.
+val releaseVersionName: String =
+    providers.gradleProperty("versionName").getOrElse("0.2.0")
+val releaseVersionCode: Int =
+    providers.gradleProperty("versionCode").getOrElse("2").toInt()
+
+// Release signing comes from CI secrets when present (see .github/workflows);
+// otherwise the debug key keeps sideload testing possible.
+val keystorePath: String = System.getenv("MARIOBOX_KEYSTORE_PATH") ?: ""
+val hasReleaseKeystore = keystorePath.isNotBlank()
+
 android {
     namespace = "dev.mariobox.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -12,9 +24,21 @@ android {
         applicationId = "dev.mariobox"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseKeystore) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("MARIOBOX_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("MARIOBOX_KEY_ALIAS") ?: "mariobox"
+                keyPassword = System.getenv("MARIOBOX_KEY_PASSWORD")
+                    ?: System.getenv("MARIOBOX_KEYSTORE_PASSWORD") ?: ""
+            }
+        }
     }
 
     buildTypes {
@@ -24,9 +48,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            signingConfig = if (hasReleaseKeystore) signingConfigs.getByName("release")
+            else signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -36,7 +61,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")

@@ -109,7 +109,7 @@ void mb_set_video_enabled(void *handle, int enabled) {
   static_cast<mb_handle *>(handle)->host.set_video_enabled(enabled != 0);
 }
 void mb_set_render_config(void *handle, int scale_mode, int filter_mode, int scanlines,
-                          int overscan, int rotation) {
+                          int overscan, int rotation, float zoom) {
   if (!handle)
     return;
   mb::RenderConfig cfg;
@@ -118,6 +118,15 @@ void mb_set_render_config(void *handle, int scale_mode, int filter_mode, int sca
   cfg.scanlines_percent = scanlines;
   cfg.overscan_crop = overscan;
   cfg.rotation = rotation;
+  /* Same clamp the render plan applies; a hand-edited preference cannot panic the
+   * sampler, it just gets pulled back into a sane range. */
+  if (!(zoom > 0.f)) /* also catches NaN */
+    zoom = 1.f;
+  if (zoom < 0.25f)
+    zoom = 0.25f;
+  if (zoom > 4.f)
+    zoom = 4.f;
+  cfg.zoom = zoom;
   static_cast<mb_handle *>(handle)->host.set_render_config(cfg);
 }
 mb_status mb_copy_frame(void *handle, uint8_t *out, size_t cap, uint32_t *out_w, uint32_t *out_h,

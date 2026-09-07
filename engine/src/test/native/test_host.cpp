@@ -286,6 +286,29 @@ int main(int argc, char **argv) {
           "overscan crop is symmetric and measured in source pixels");
     check(po.u1 - po.u0 < 1.f && po.v1 - po.v0 < 1.f, "a cropped frame samples less than all of it");
 
+    RenderConfig zin{};
+    zin.scale_mode = MB_SCALE_FIT;
+    zin.zoom = 1.5f;
+    PresentPlan pz = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, zin);
+    check(pz.valid && pz.u1 - pz.u0 < 1.f && pz.viewport.width == 1080 && pz.crop_x > 0 &&
+              pz.viewport.height > p.viewport.height,
+          "zoom in magnifies by cropping the sampled rect, never by squashing");
+
+    RenderConfig zout{};
+    zout.scale_mode = MB_SCALE_FIT;
+    zout.zoom = 0.5f;
+    PresentPlan pzo = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, zout);
+    check(pzo.valid && pzo.viewport.width == 540 && std::fabs(pzo.viewport.height - 405.f) < 1.f &&
+              pzo.u0 == 0.f && pzo.u1 == 1.f,
+          "zoom out shrinks the picture into a centred letterbox");
+
+    RenderConfig zclamp{};
+    zclamp.scale_mode = MB_SCALE_FIT;
+    zclamp.zoom = 100.f;
+    PresentPlan pzc = make_plan(1080, 2160, 256, 240, 4.0 / 3.0, zclamp);
+    check(pzc.valid && pzc.u1 > pzc.u0 && pzc.viewport.width > 0,
+          "an out-of-range zoom is clamped to a sane multiplier, not a divide-by-zero");
+
     RenderConfig rot{};
     rot.scale_mode = MB_SCALE_FIT;
     rot.rotation = 90;

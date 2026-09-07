@@ -104,6 +104,8 @@ data class RenderSettings(
     val overscanCrop: Int = 0,
     /** 0, 90 or 180 clockwise. */
     val rotation: Int = 0,
+    /** View zoom: 1.0 = native fit; 0.25..4.0. >1 crops into the picture. */
+    val zoom: Float = 1f,
 ) {
     companion object {
         const val SCALE_FIT = 0
@@ -112,6 +114,8 @@ data class RenderSettings(
         const val SCALE_FILL_CROP = 3
         const val FILTER_NEAREST = 0
         const val FILTER_LINEAR = 1
+        const val ZOOM_MIN = 0.25f
+        const val ZOOM_MAX = 4f
 
         val scaleNames = listOf(
             "Fit (letterbox)",

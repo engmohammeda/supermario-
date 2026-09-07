@@ -4,7 +4,25 @@ import dev.mariobox.engine.Gamepad
 
 /** Everything the overlay can draw: pad buttons plus the host actions beside them. */
 enum class PadAction {
-    UP, DOWN, LEFT, RIGHT, A, B, START, SELECT, TURBO_A, TURBO_B, REWIND, QUICK, FAST_FWD
+    UP, DOWN, LEFT, RIGHT, A, B, START, SELECT, TURBO_A, TURBO_B, REWIND, QUICK, FAST_FWD;
+
+    /** Human-readable Arabic label used by the editor list. */
+    val editorLabel: String
+        get() = when (this) {
+            UP -> "▲ لأعلى"
+            DOWN -> "▼ لأسفل"
+            LEFT -> "◀ يسار"
+            RIGHT -> "▶ يمين"
+            A -> "A"
+            B -> "B"
+            START -> "بدء"
+            SELECT -> "اختيار"
+            TURBO_A -> "A⚡ تربو"
+            TURBO_B -> "B⚡ تربو"
+            REWIND -> "⏪ رجوع"
+            QUICK -> "💾 حفظ سريع"
+            FAST_FWD -> "⏩ تسريع"
+        }
 }
 
 /**
@@ -13,15 +31,35 @@ enum class PadAction {
  *
  * Fractions rather than dp because the same layout has to survive a 360dp phone, an
  * 800dp tablet and a rotation; and because "preset -> map" is a pure function a unit
- * test can pin down, which a column of hardcoded modifiers is not. The full drag
- * editor (docs/PLAN.md §5.3) replaces the three presets, not this shape.
+ * test can pin down, which a column of hardcoded modifiers is not.
  */
 data class Placement(val cx: Float, val cy: Float, val w: Float, val h: Float)
+
+/**
+ * One editable control from the custom-layout editor. This is what gets serialised:
+ * [visible] hides a button without deleting it, [opacity] is 0.2..1.
+ */
+data class ControlPlacement(
+    val cx: Float,
+    val cy: Float,
+    val w: Float,
+    val h: Float,
+    val visible: Boolean = true,
+    val opacity: Float = 1f,
+) {
+    fun render(): Placement = Placement(cx, cy, w, h)
+}
 
 object PadLayout {
     const val PRESET_CLASSIC = 0
     const val PRESET_MIRRORED = 1
     const val PRESET_ONE_HAND = 2
+    const val PRESET_CUSTOM = 3
+
+    const val MIN_W = 0.04f
+    const val MAX_W = 0.30f
+    const val MIN_H = 0.04f
+    const val MAX_H = 0.30f
 
     /** Classic pad-on-the-left layout. The other two are derived from it. */
     private val classic: Map<PadAction, Placement> = mapOf(
@@ -40,7 +78,28 @@ object PadLayout {
         PadAction.FAST_FWD to Placement(0.16f, 0.20f, 0.10f, 0.08f),
     )
 
-    fun placements(preset: Int): Map<PadAction, Placement> = when (preset) {
+    /** The editable base map, one {@link ControlPlacement} per action. */
+    fun defaultCustom(): Map<PadAction, ControlPlacement> = classic.mapValues { (_, p) ->
+        ControlPlacement(p.cx, p.cy, p.w, p.h)
+    }
+
+    fun placements(preset: Int): Map<PadAction, Placement> = placements(preset, null)
+
+    /** Resolves a preset (or the custom map) into renderable placements. */
+    fun placements(preset: Int, custom: Map<PadAction, ControlPlacement>?): Map<PadAction, Placement> {
+        val base = presetPlacements(preset)
+        if (preset != PRESET_CUSTOM || custom == null) return base
+        // A custom map may be missing an action that a future build adds: fall back
+        // to the classic spot for it rather than silently dropping the control.
+        return PadAction.entries.mapNotNull { action ->
+            val p = custom[action] ?: return@mapNotNull classic[action]?.let { c ->
+                action to c
+            }
+            if (!p.visible) null else action to p.render()
+        }.toMap()
+    }
+
+    private fun presetPlacements(preset: Int): Map<PadAction, Placement> = when (preset) {
         /* Left-handed play: the whole surface mirrors, so the pad ends up under the
          * right thumb and the face buttons under the left. */
         PRESET_MIRRORED -> classic.mapValues { (_, p) -> p.copy(cx = 1f - p.cx) }
@@ -67,6 +126,46 @@ object PadLayout {
         else -> classic
     }
 
+    /* ------------------------------------------------------------ serialisation
+     * Pipe-separated rows keep the codec pure Kotlin (no org.json on the JVM test
+     * classpath) and human-diffable: `A|0.93|0.58|0.14|0.14|1|0.90`.
+     */
+    fun encodeCustom(map: Map<PadAction, ControlPlacement>): String =
+        PadAction.entries.mapNotNull { action -> map[action]?.let { action to it } }
+            .joinToString("\n") { (action, p) ->
+                "${action.name}|${p.cx}|${p.cy}|${p.w}|${p.h}|${if (p.visible) 1 else 0}|${p.opacity}"
+            }
+
+    fun decodeCustom(raw: String?): Map<PadAction, ControlPlacement>? {
+        if (raw.isNullOrBlank()) return null
+        val out = mutableMapOf<PadAction, ControlPlacement>()
+        for (line in raw.split('\n')) {
+            val parts = line.split('|')
+            if (parts.size < 7) continue
+            val action = runCatching { PadAction.valueOf(parts[0]) }.getOrNull() ?: continue
+            val cx = parts[1].toFloatOrNull() ?: continue
+            val cy = parts[2].toFloatOrNull() ?: continue
+            val w = (parts[3].toFloatOrNull() ?: continue).coerceIn(MIN_W, MAX_W)
+            val h = (parts[4].toFloatOrNull() ?: continue).coerceIn(MIN_H, MAX_H)
+            val visible = parts[5] == "1"
+            val opacity = (parts[6].toFloatOrNull() ?: 1f).coerceIn(0.2f, 1f)
+            out[action] = ControlPlacement(
+                cx.coerceIn(0f, 1f), cy.coerceIn(0f, 1f), w, h, visible, opacity
+            )
+        }
+        return out.ifEmpty { null }
+    }
+
+    /** Clamps a placement so the control never leaves the screen. */
+    fun clamp(p: ControlPlacement): ControlPlacement = ControlPlacement(
+        cx = p.cx.coerceIn(p.w / 2f, 1f - p.w / 2f),
+        cy = p.cy.coerceIn(p.h / 2f, 1f - p.h / 2f),
+        w = p.w.coerceIn(MIN_W, MAX_W),
+        h = p.h.coerceIn(MIN_H, MAX_H),
+        visible = p.visible,
+        opacity = p.opacity.coerceIn(0.2f, 1f),
+    )
+
     /** The pad bit this action drives; 0 for actions that are not pad bits. */
     fun bitFor(action: PadAction): Int = when (action) {
         PadAction.UP -> Gamepad.UP
@@ -87,4 +186,3 @@ object PadLayout {
         else -> 0
     }
 }
-

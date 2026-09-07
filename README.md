@@ -19,18 +19,19 @@
 | `platform/android` (EGL/GLES2/JNI) | فحص صياغة مقابل رؤوس Khronos/JDK الحقيقية بـ `-Werror` | ✅ نظيف (بدون GPU) |
 | AAudio | لا رؤوس أندرويد في بيئة التطوير | 🚧 يُثبَت في CI وعلى جهاز |
 | Gradle + Kotlin/Compose | لا JDK/SDK في بيئة التطوير | 🚧 يُثبَت في CI |
-| APK (debug/release) | `assembleDebug` / `assembleRelease` | 🚧 CI (`.ci/android-build.yml`) |
+| APK (debug/release) | `assembleDebug` / `assembleRelease` (R8 + توقيع اختياري) | 🚧 CI (`.ci/android-build.yml` → يُفعَّل كخطوة واحدة، docs/BUILD.md §3) |
+| إصدارات GitHub + تلجرام | tags `v*` → GitHub Release + `tools/send_apk_telegram.py` | 🚧 CI (أسرار `BOT_TOKEN`/`CHAT_ID`) |
 
 **ما لا يعمل بعد** (مذكور بصدق، لا واجهات وهمية): النواة الثانية (`nescc` غير
 قابلة للبناء كما هو منشور — خيار CMake يفشل بصوت عالٍ)، دعم_fds_مقفول بقرار،
-تصدير/استيراد الحالات عبر SAF (الواجهة جاهزة في `Prefs`/`Library`، الحركة لم تُكتب)،
-وإعادة تعيين لوحة الأزرار بالسحب. القائمة الكاملة في [docs/QA.md](docs/QA.md).
+وتصدير/استيراد الحالات عبر SAF (الواجهة جاهزة في `Prefs`/`Library`، الحركة لم تُكتب).
+القائمة الكاملة في [docs/QA.md](docs/QA.md).
 
 ## التشغيل السريع
 
 ```sh
 # 1) الطبقة الحرجة: لا تحتاج أندرويد إطلاقًا
-make -C engine/src/test/native -j"$(nproc)" run     # → PASSED 83 checks, 0 failures
+make -C engine/src/test/native -j"$(nproc)" run     # → PASSED 86 checks, 0 failures
 
 # 2) التطبيق: أندرويد ستوديو (أو Gradle 9.5 + NDK 28 + SDK 37)
 gradle :app:assembleDebug
@@ -51,11 +52,12 @@ engine/src/main/cpp/third_party/fceumm_next/  النواة، منقولة دون
 engine/src/main/java/dev/mariobox/engine/     MbNative/MbEngine/Gamepad/INesHeader (آمنة للاختبار على JVM)
 engine/src/test/native/               مجموعة الامتثال (83 فحصًا) + Makefile + build-san
 app/src/main/java/dev/mariobox/app/    MainActivity، EmulatorViewModel، مكتبة، تفضيلات
-app/src/main/java/dev/mariobox/app/ui/  المكتبة، شاشة اللعبة، الأزرار/PadLayout، اللوحات (حالات/غشّات/إعدادات)
+app/src/main/java/dev/mariobox/app/ui/  المكتبة، شاشة اللعبة، الأزرار/محرّرها، لوحة واحدة موحّدة (حالات/غشّ/إعدادات/أزرار)
+app/src/main/assets/                  (المكتبة المضمّنة للغشّ — انظر CheatLibrary.kt)
 docs/PLAN.md                          العقد الملزم: القرار، الأدوات المتاحة، المخاطر، ADRs
 docs/{BUILD,QA,THIRD_PARTY}.md        البناء، الجودة، الملكية الفكرية
-.ci/android-build.yml                 بوابة CI (انظر docs/BUILD.md §3 لتفعيلها)
-tools/                                gen_test_rom.py، gen_cmake_core_list.py
+.ci/android-build.yml                 بوابة CI + إصدارات GitHub + تلجرام (docs/BUILD.md §3 لتفعيلها)
+tools/                                gen_test_rom.py، gen_cmake_core_list.py، send_apk_telegram.py
 ```
 
 ## بنية التصميم (لماذا هو هكذا)

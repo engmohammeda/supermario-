@@ -131,6 +131,9 @@ struct RenderConfig {
   int scanlines_percent = 0;
   int overscan_crop = 0;
   int rotation = 0; /* 0 or 90 clockwise */
+  /* View zoom: 1.0 = native fit. >1 magnifies (sampling a smaller source rect,
+   * exactly like FILL_CROP); <1 shrinks the picture into a letterbox. 0.25..4. */
+  float zoom = 1.0f;
 };
 
 /* Implemented per platform. A null pointer means "no rendering". */

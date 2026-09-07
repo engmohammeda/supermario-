@@ -2,6 +2,9 @@ package dev.mariobox.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import dev.mariobox.app.ui.ControlPlacement
+import dev.mariobox.app.ui.PadAction
+import dev.mariobox.app.ui.PadLayout
 import dev.mariobox.engine.RenderSettings
 import java.io.File
 
@@ -55,6 +58,11 @@ class Prefs(context: Context) {
         get() = sp.getFloat("volume", 1f)
         set(v) = sp.edit().putFloat("volume", v.coerceIn(0f, 1f)).apply()
 
+    /** View zoom factor (0.25..4); 1 = native fit. Part of the cheat features. */
+    var zoom: Float
+        get() = sp.getFloat("zoom", 1f)
+        set(v) = sp.edit().putFloat("zoom", v.coerceIn(RenderSettings.ZOOM_MIN, RenderSettings.ZOOM_MAX)).apply()
+
     var audioEnabled: Boolean
         get() = sp.getBoolean("audio", true)
         set(v) = sp.edit().putBoolean("audio", v).apply()
@@ -73,14 +81,41 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("sram", true)
         set(v) = sp.edit().putBoolean("sram", v).apply()
 
-    /** Which overlay preset to draw; the editor that moves individual buttons is M4. */
+    /** Which overlay preset to draw; the custom editor maps this to a saved map. */
     var overlayLayout: Int
         get() = try {
             sp.getInt("overlay_layout", LAYOUT_BOTH)
         } catch (e: Exception) {
             LAYOUT_BOTH
         }
-        set(v) = sp.edit().putInt("overlay_layout", v.coerceIn(0, 2)).apply()
+        set(v) = sp.edit().putInt("overlay_layout", v.coerceIn(0, 3)).apply()
+
+    /** Global touch-control opacity, 0.2..1. */
+    var overlayOpacity: Float
+        get() = sp.getFloat("overlay_opacity", 0.85f)
+        set(v) = sp.edit().putFloat("overlay_opacity", v.coerceIn(0.2f, 1f)).apply()
+
+    /** Global touch-control size multiplier, 0.6..1.4. */
+    var overlayScale: Float
+        get() = sp.getFloat("overlay_scale", 1f)
+        set(v) = sp.edit().putFloat("overlay_scale", v.coerceIn(0.6f, 1.4f)).apply()
+
+    /** Custom per-button placements, serialised by [PadLayout]. */
+    var customControls: String?
+        get() = sp.getString("custom_controls", null)
+        set(v) = sp.edit().putString("custom_controls", v?.takeIf { it.isNotBlank() }).apply()
+
+    fun customControlMap(): Map<PadAction, ControlPlacement>? =
+        PadLayout.decodeCustom(customControls)
+
+    fun setCustomControlMap(map: Map<PadAction, ControlPlacement>) {
+        customControls = PadLayout.encodeCustom(map)
+    }
+
+    /** The core's colour palette key (fceumm_next_palette); default = original PPU. */
+    var palette: String
+        get() = sp.getString("palette", DEFAULT_PALETTE) ?: DEFAULT_PALETTE
+        set(v) = sp.edit().putString("palette", v.ifBlank { DEFAULT_PALETTE }).apply()
 
     var turboHz: Int
         get() = sp.getInt("turbo_hz", 30)
@@ -127,6 +162,7 @@ class Prefs(context: Context) {
         scanlinesPercent = scanlinesPercent,
         overscanCrop = overscanCrop,
         rotation = rotation,
+        zoom = zoom,
     )
 
     /** Rotation is a *display* choice: a 90-degree turn is how you play a landscape
@@ -143,5 +179,9 @@ class Prefs(context: Context) {
         const val LAYOUT_LEFT = 0
         const val LAYOUT_RIGHT = 1
         const val LAYOUT_BOTH = 2
+        const val LAYOUT_CUSTOM = 3
+
+        /** FCEUmm's "Nintendo RGB PPU": the authentic NES PPU colours. */
+        const val DEFAULT_PALETTE = "rgb"
     }
 }

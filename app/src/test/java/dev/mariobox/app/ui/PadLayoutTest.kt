@@ -43,6 +43,39 @@ class PadLayoutTest {
     }
 
     @Test
+    fun `custom map round-trips through the codec`() {
+        val custom = PadLayout.defaultCustom().mapValues { (_, p) ->
+            p.copy(cx = 0.42f, cy = 0.61f, w = 0.17f, h = 0.13f, visible = false, opacity = 0.55f)
+        }
+        val decoded = PadLayout.decodeCustom(PadLayout.encodeCustom(custom))
+        assertNotNull(decoded)
+        val a = decoded!!.getValue(PadAction.A)
+        assertEquals(0.42f, a.cx, 0.0001f)
+        assertEquals(0.61f, a.cy, 0.0001f)
+        assertEquals(0.17f, a.w, 0.0001f)
+        assertEquals(0.13f, a.h, 0.0001f)
+        assertEquals(false, a.visible)
+        assertEquals(0.55f, a.opacity, 0.0001f)
+        assertEquals(custom.size, decoded.size)
+    }
+
+    @Test
+    fun `hidden custom controls are not rendered and missing ones fall back`() {
+        val custom = PadLayout.defaultCustom().toMutableMap()
+        custom[PadAction.UP] = custom.getValue(PadAction.UP).copy(visible = false)
+        custom.remove(PadAction.REWIND)
+        val map = PadLayout.placements(PadLayout.PRESET_CUSTOM, custom)
+        assertTrue("hidden UP must not render", PadAction.UP !in map)
+        assertTrue("REWIND falls back to its classic spot", PadAction.REWIND in map)
+    }
+
+    @Test
+    fun `custom preset without saved data falls back to classic`() {
+        val map = PadLayout.placements(PadLayout.PRESET_CUSTOM, null)
+        assertEquals(allActions.size, map.size)
+    }
+
+    @Test
     fun `momentary actions stay below the chrome strip`() {
         val map = PadLayout.placements(PadLayout.PRESET_CLASSIC)
         for (a in listOf(PadAction.REWIND, PadAction.QUICK, PadAction.FAST_FWD)) {

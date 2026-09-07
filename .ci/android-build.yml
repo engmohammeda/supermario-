@@ -1,0 +1,249 @@
+# MARIOBOX Android Build, Release & Telegram.
+#
+#   native  -- the C++ host and the vendored core, built and run against a generated
+#              test ROM on plain Linux with gcc (docs/PLAN.md §6 N1)
+#   android -- Gradle: unit tests, debug APK, R8-minified release APK, lint,
+#              versioned artifact names + SHA256
+#   release -- on a tag `v*` (or manual workflow_dispatch): GitHub Release with
+#              the APKs attached, then Telegram delivery.
+#
+# Secrets (configure in Settings → Secrets and variables → Actions):
+#   BOT_TOKEN                 Telegram bot token (required for Telegram)
+#   CHAT_ID                   Telegram chat / User ID (default 5926222376)
+#   MARIOBOX_KEYSTORE_B64     base64 of the release JKS (optional)
+#   MARIOBOX_KEYSTORE_PASSWORD, MARIOBOX_KEY_ALIAS, MARIOBOX_KEY_PASSWORD
+#   MARIOBOX_SIGNING_KEYSTORE_B64 etc. (same keystore secret names as above)
+#
+# No AAB: this app is sideloaded, so a universal APK is the artifact (PLAN §7).
+
+name: MARIOBOX Android Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to tag the manual release with (e.g. 0.2.0)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NDK_VERSION: 28.2.13676358
+  SDK_PLATFORM: android-36
+  BUILD_TOOLS: 36.0.0
+
+jobs:
+  native:
+    name: Host tests (N1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential zlib1g-dev python3
+          gcc --version
+          nproc
+
+      - name: Core source list matches the vendored makefile fragment
+        run: make -C engine/src/test/native check-source-list
+
+      - name: Build host + core
+        run: make -C engine/src/test/native -j"$(nproc)"
+
+      - name: Run the conformance suite
+        run: make -C engine/src/test/native run
+
+      - name: Build with CMake too (the Android half's configure path)
+        run: |
+          cmake -S engine/src/main/cpp -B build/cmake-host -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/cmake-host -j"$(nproc)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: host-test-output
+          path: build/test-out.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  android:
+    name: APK build (N4)
+    needs: native
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_code: ${{ steps.version.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version (tags / dispatch / describe)
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(git describe --tags --always 2>/dev/null | sed 's/^v//')"
+            [ -n "$VERSION" ] || VERSION="0.0.0-ci"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version_code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install platform, build-tools, NDK and CMake
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;${{ env.SDK_PLATFORM }}" "build-tools;${{ env.BUILD_TOOLS }}" "ndk;${{ env.NDK_VERSION }}" "cmake;3.31.6"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Decode release keystore from secrets (optional)
+        id: keystore
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.MARIOBOX_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.MARIOBOX_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.MARIOBOX_KEY_ALIAS }}
+          KS_KEY_PASS: ${{ secrets.MARIOBOX_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "no keystore secret — release uses the debug key (dev build)"
+            exit 0
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/mariobox-release.jks"
+          echo "MARIOBOX_KEYSTORE_PATH=$RUNNER_TEMP/mariobox-release.jks" >> "$GITHUB_ENV"
+          echo "MARIOBOX_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+          echo "MARIOBOX_KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
+          echo "MARIOBOX_KEY_PASSWORD=$KS_KEY_PASS" >> "$GITHUB_ENV"
+          echo "keystore_ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Gradle unit tests (N2)
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_versionName: ${{ steps.version.outputs.version }}
+          ORG_GRADLE_PROJECT_versionCode: ${{ steps.version.outputs.version_code }}
+
+      - name: Assemble release APK (R8 + optional signing)
+        run: ./gradlew assembleRelease --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_versionName: ${{ steps.version.outputs.version }}
+          ORG_GRADLE_PROJECT_versionCode: ${{ steps.version.outputs.version_code }}
+
+      - name: Lint (informational)
+        continue-on-error: true
+        run: ./gradlew lintDebug
+
+      - name: Collect versioned artifacts
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p out
+          cp app/build/outputs/apk/debug/app-debug.apk "out/MarioBox-v${VERSION}-debug.apk"
+          if [ -f app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp app/build/outputs/apk/release/app-release-unsigned.apk "out/MarioBox-v${VERSION}-release.apk"
+          else
+            cp app/build/outputs/apk/release/app-release.apk "out/MarioBox-v${VERSION}-release.apk"
+          fi
+          (cd out && sha256sum *.apk > SHA256SUMS)
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MarioBox-apk
+          path: out/*
+          retention-days: 30
+
+  release:
+    name: GitHub Release + Telegram
+    needs: android
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.android.result == 'success' &&
+      (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: MarioBox-apk
+          path: out
+
+      - name: Verify checksums
+        shell: bash
+        run: |
+          cd out
+          sha256sum -c SHA256SUMS
+          ls -la
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.android.outputs.version }}
+        run: |
+          TAG="v${VERSION}"
+          EXISTS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json tagName -q .tagName 2>/dev/null || echo "")
+          if [ -n "$EXISTS" ]; then
+            echo "Release $TAG already exists — uploading assets to it"
+            gh release upload "$TAG" out/*.apk out/SHA256SUMS --repo "${{ github.repository }}" --clobber || true
+          else
+            gh release create "$TAG" out/*.apk out/SHA256SUMS \
+              --repo "${{ github.repository }}" \
+              --title "MarioBox v${VERSION}" \
+              --notes "MarioBox v${VERSION}
+
+Build of commit \`${{ github.sha }}\` from \`${{ github.ref_name }}\`.
+
+- Universal APK (arm64-v8a, armeabi-v7a, x86_64)
+- R8-minified release
+- Checksums in SHA256SUMS" || true
+          fi
+          gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '.assets[].name'
+
+      - name: Send Release APK to Telegram
+        shell: bash
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID || '5926222376' }}
+          VERSION: ${{ needs.android.outputs.version }}
+        run: |
+          if [ -z "$BOT_TOKEN" ]; then
+            echo "BOT_TOKEN secret not configured — skipping Telegram delivery"
+            exit 0
+          fi
+          python3 tools/send_apk_telegram.py "out/MarioBox-v${VERSION}-release.apk" --version "v${VERSION}" || true

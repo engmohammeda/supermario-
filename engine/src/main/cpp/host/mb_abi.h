@@ -175,7 +175,7 @@ typedef enum mb_filter_mode {
   MB_FILTER_xBR_NONE_UNUSED = 2,
 } mb_filter_mode;
 void mb_set_render_config(void *handle, int scale_mode, int filter_mode,
-                          int scanlines_percent, int overscan_crop, int rotation);
+                          int scanlines_percent, int overscan_crop, int rotation, float zoom);
 
 /* ---- audio ------------------------------------------------------------ */
 /* Software gain, 0..1, applied by the platform backend. Readable so a settings
