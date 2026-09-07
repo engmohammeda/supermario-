@@ -347,9 +347,9 @@ MB_JNI(MbNative, nativeSetVideoEnabled)(JNIEnv *, jclass, jlong hp, jboolean on)
 }
 extern "C" JNIEXPORT void JNICALL MB_JNI(MbNative, nativeSetRenderConfig)(
     JNIEnv *, jclass, jlong hp, jint scale, jint filter, jint scanlines, jint overscan,
-    jint rotation) {
+    jint rotation, jfloat zoom) {
   if (handle(hp))
-    mb_set_render_config(handle(hp), scale, filter, scanlines, overscan, rotation);
+    mb_set_render_config(handle(hp), scale, filter, scanlines, overscan, rotation, zoom);
 }
 
 /* Fills `meta` with {width, height, pitch} and returns the RGBA bytes. */

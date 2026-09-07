@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,9 +22,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -40,24 +38,36 @@ fun ControlsLayer(
     onPress: (PadAction) -> Unit,
     onRelease: (PadAction) -> Unit,
     onTap: (PadAction) -> Unit,
+    opacity: Float = 1f,
+    scale: Float = 1f,
+    enabled: Boolean = true,
+    /** Per-control opacity from the custom editor (null = use the global one). */
+    opacityFor: ((PadAction) -> Float)? = null,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val width: Dp = maxWidth
         val height: Dp = maxHeight
+        val k = scale.coerceIn(0.6f, 1.4f)
         for ((action, p) in placements) {
             val isMomentary = PadLayout.bitFor(action) == 0 && PadLayout.turboBitFor(action) == 0
             val isActionButton = action == PadAction.A || action == PadAction.B
             val isTurboButton = action == PadAction.TURBO_A || action == PadAction.TURBO_B
             val isDirection = action == PadAction.UP || action == PadAction.DOWN || action == PadAction.LEFT || action == PadAction.RIGHT
 
+            val w = (p.w * k).coerceAtMost(0.5f)
+            val h = (p.h * k).coerceAtMost(0.5f)
             val mod = Modifier
-                .offset(x = width * p.cx - (width * p.w) / 2f, y = height * p.cy - (height * p.h) / 2f)
-                .size(width = width * p.w, height = height * p.h)
+                .offset(x = width * p.cx - (width * w) / 2f, y = height * p.cy - (height * h) / 2f)
+                .size(width = width * w, height = height * h)
+            // Editor per-button opacity applies on top of the global overlay one.
+            val alpha = (opacityFor?.invoke(action) ?: 1f).coerceIn(0.2f, 1f) * opacity
 
             if (isMomentary) {
                 TapButton(
                     label = labelFor(action),
                     modifier = mod,
+                    alpha = alpha,
+                    enabled = enabled,
                     onTap = { onTap(action) }
                 )
             } else {
@@ -68,6 +78,8 @@ fun ControlsLayer(
                     isTurboButton = isTurboButton,
                     isDirection = isDirection,
                     modifier = mod,
+                    alpha = alpha,
+                    enabled = enabled,
                     onPress = { onPress(action) },
                     onRelease = { onRelease(action) }
                 )
@@ -87,6 +99,8 @@ fun HoldButton(
     isTurboButton: Boolean,
     isDirection: Boolean,
     modifier: Modifier,
+    alpha: Float = 1f,
+    enabled: Boolean = true,
     onPress: () -> Unit,
     onRelease: () -> Unit
 ) {
@@ -141,7 +155,8 @@ fun HoldButton(
             .clip(shape)
             .background(bgColor)
             .border(1.5.dp, borderColor, shape)
-            .pointerInput(action) {
+            .pointerInput(action, enabled) {
+                if (!enabled) return@pointerInput
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     pressed = true
@@ -154,7 +169,8 @@ fun HoldButton(
                     onRelease()
                 }
             }
-            .padding(4.dp),
+            .padding(4.dp)
+            .graphicsLayer(alpha = alpha),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -173,7 +189,13 @@ fun HoldButton(
 
 /** Modern glassmorphic tactile momentary button */
 @Composable
-fun TapButton(label: String, modifier: Modifier, onTap: () -> Unit) {
+fun TapButton(
+    label: String,
+    modifier: Modifier,
+    alpha: Float = 1f,
+    enabled: Boolean = true,
+    onTap: () -> Unit,
+) {
     var pressed by remember(label) { mutableStateOf(false) }
 
     Box(
@@ -181,7 +203,8 @@ fun TapButton(label: String, modifier: Modifier, onTap: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .background(if (pressed) Color(0x5500E5FF) else Color(0x1F1A253D))
             .border(1.dp, if (pressed) MarioBoxColors.SecondaryCyan else Color(0x333F537E), RoundedCornerShape(12.dp))
-            .pointerInput(label) {
+            .pointerInput(label, enabled) {
+                if (!enabled) return@pointerInput
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     pressed = true
@@ -191,7 +214,8 @@ fun TapButton(label: String, modifier: Modifier, onTap: () -> Unit) {
                     }
                     pressed = false
                 }
-            },
+            }
+            .graphicsLayer(alpha = alpha),
         contentAlignment = Alignment.Center,
     ) {
         Text(

@@ -243,6 +243,7 @@ class MbEngine {
         if (!active) return
         MbNative.nativeSetRenderConfig(
             handle, r.scaleMode, r.filterMode, r.scanlinesPercent, r.overscanCrop, r.rotation,
+            r.zoom.coerceIn(RenderSettings.ZOOM_MIN, RenderSettings.ZOOM_MAX),
         )
     }
 

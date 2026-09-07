@@ -4,14 +4,8 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,20 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -94,7 +82,6 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
         }
     }
 
-    var menuOpen by remember { mutableStateOf(false) }
     var ff by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -109,7 +96,7 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Core SurfaceView
+        // Core SurfaceView -- the only game screen
         AndroidView(
             factory = { ctx ->
                 SurfaceView(ctx).apply {
@@ -127,22 +114,19 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
                     })
                 }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = { menuOpen = !menuOpen },
-                        onTap = { /* Keep gesture active */ }
-                    )
-                }
+            modifier = Modifier.fillMaxSize()
         )
 
         // Custom On-Screen Virtual Controller
         if (vm.prefs.overlayVisible) {
             val labels = OverlayLabels.map()
+            val customMap = vm.prefs.customControlMap()
             ControlsLayer(
-                placements = PadLayout.placements(vm.prefs.overlayLayout),
+                placements = PadLayout.placements(vm.prefs.overlayLayout, customMap),
                 labelFor = { action -> labels[action] ?: "?" },
+                opacity = vm.prefs.overlayOpacity,
+                scale = vm.prefs.overlayScale,
+                opacityFor = if (customMap != null) { a -> customMap[a]?.opacity ?: 1f } else null,
                 onPress = { vm.overlayPress(it, true) },
                 onRelease = { vm.overlayPress(it, false) },
                 onTap = { action ->
@@ -159,79 +143,46 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
             )
         }
 
-        // Top Navigation Bar / Quick Strip
+        // One clean top bar: HUD left, actions right. No second "screen".
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left menu trigger with high-contrast glass badge
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Surface(
-                    onClick = { menuOpen = !menuOpen },
-                    shape = RoundedCornerShape(12.dp),
-                    color = MarioBoxColors.SurfaceCard.copy(alpha = 0.85f),
-                    modifier = Modifier.border(1.dp, MarioBoxColors.SurfaceBorder, RoundedCornerShape(12.dp))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (menuOpen) "✕" else "⚡ MENU",
-                            color = MarioBoxColors.PrimaryRed,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = menuOpen,
-                    enter = fadeIn() + slideInHorizontally(),
-                    exit = fadeOut() + slideOutHorizontally()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        QuickBarButton(
-                            icon = "🚪",
-                            label = stringResource(R.string.back),
-                            onClick = onBack
-                        )
-                        QuickBarButton(
-                            icon = if (vm.paused) "▶" else "⏸",
-                            label = stringResource(if (vm.paused) R.string.game_resumed else R.string.game_paused),
-                            isHighlight = vm.paused,
-                            onClick = { vm.togglePause() }
-                        )
-                        QuickBarButton(
-                            icon = "💾",
-                            label = stringResource(R.string.states_title),
-                            onClick = { onSheet(Sheet.States) }
-                        )
-                        QuickBarButton(
-                            icon = "🔮",
-                            label = stringResource(R.string.cheats_title),
-                            onClick = { onSheet(Sheet.Cheats) }
-                        )
-                        QuickBarButton(
-                            icon = "⚙️",
-                            label = stringResource(R.string.settings_title),
-                            onClick = { onSheet(Sheet.Settings) }
-                        )
-                    }
-                }
-            }
-
-            // Right HUD Indicator
             GameHudOverlay(vm)
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                QuickBarButton(
+                    icon = if (vm.paused) "▶" else "⏸",
+                    isHighlight = vm.paused,
+                    onClick = { vm.togglePause() }
+                )
+                QuickBarButton(
+                    icon = "💾",
+                    onClick = { onSheet(Sheet.States) }
+                )
+                QuickBarButton(
+                    icon = "🔮",
+                    onClick = { onSheet(Sheet.Cheats) }
+                )
+                QuickBarButton(
+                    icon = "🎛",
+                    onClick = { onSheet(Sheet.Controls) }
+                )
+                QuickBarButton(
+                    icon = "⚙️",
+                    onClick = { onSheet(Sheet.Settings) }
+                )
+                QuickBarButton(
+                    icon = "🚪",
+                    onClick = onBack
+                )
+            }
         }
 
         // Busy / Loading Indicator
@@ -274,14 +225,13 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
 @Composable
 private fun QuickBarButton(
     icon: String,
-    label: String,
     isHighlight: Boolean = false,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        color = if (isHighlight) MarioBoxColors.PrimaryRed.copy(alpha = 0.85f)
+        color = if (isHighlight) MarioBoxColors.PrimaryRed.copy(alpha = 0.9f)
         else MarioBoxColors.SurfaceElevated.copy(alpha = 0.85f),
         modifier = Modifier.border(
             1.dp,
@@ -293,14 +243,7 @@ private fun QuickBarButton(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(icon, fontSize = 12.sp)
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = label,
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text(icon, fontSize = 13.sp)
         }
     }
 }

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,10 +45,15 @@ import dev.mariobox.engine.Cores
 class MainActivity : ComponentActivity() {
     private val vm: EmulatorViewModel by viewModels()
 
+    /** Hoisted so an ACTION_VIEW (file manager) can jump straight into the game. */
+    private val showGame = androidx.compose.runtime.mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent { MarioBoxApp(vm) }
+        setContent {
+            MarioBoxApp(vm, showGame = showGame.value, onShowGame = { showGame.value = it })
+        }
         consumeViewIntent(intent)
     }
 
@@ -61,7 +65,9 @@ class MainActivity : ComponentActivity() {
     private fun consumeViewIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val uri: Uri = intent.data ?: return
-        vm.import(uri) { cartridge -> vm.start(cartridge) }
+        // A ROM opened from the file manager opens the game screen directly --
+        // one screen, never the library sitting on top of a running emulator.
+        vm.import(uri) { cartridge -> showGame.value = true }
         intent.data = null
     }
 
@@ -78,8 +84,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MarioBoxApp(vm: EmulatorViewModel) {
-    var showGame by remember { mutableStateOf(false) }
+fun MarioBoxApp(vm: EmulatorViewModel, showGame: Boolean, onShowGame: (Boolean) -> Unit) {
     var sheet by remember { mutableStateOf<Sheet?>(null) }
     var showLegalDialog by remember { mutableStateOf(!vm.prefs.legalAcknowledged) }
 
@@ -93,7 +98,7 @@ fun MarioBoxApp(vm: EmulatorViewModel) {
                 GameScreen(
                     vm = vm,
                     onBack = {
-                        showGame = false
+                        onShowGame(false)
                         vm.stopGame()
                     },
                     onSheet = { sheet = it },
@@ -102,14 +107,19 @@ fun MarioBoxApp(vm: EmulatorViewModel) {
                 LibraryScreen(
                     vm = vm,
                     onPlay = { c ->
-                        showGame = true
+                        onShowGame(true)
                         vm.start(c)
                     },
                 )
             }
 
             sheet?.let { s ->
-                SheetHost(sheet = s, vm = vm, onDismiss = { sheet = null })
+                SheetHost(
+                    sheet = s,
+                    vm = vm,
+                    onDismiss = { sheet = null },
+                    onSelect = { sheet = it },
+                )
             }
 
             val context = androidx.compose.ui.platform.LocalContext.current

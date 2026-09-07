@@ -54,31 +54,69 @@
     <string name="cheats_live">من النواة: %1$s</string>
     <string name="cheats_none">لا أكواد. أضف كود Game Genie من زر «أضف كودًا».</string>
 
+    <!-- لوحة موحّدة (شاشة واحدة أثناء اللعب) -->
+    <string name="panel_title">لوحة ماريوبوكس</string>
+    <string name="controls_title">الأزرار</string>
+
     <!-- الإعدادات -->
     <string name="settings_title">الإعدادات</string>
-    <string name="settings_video">الفيديو</string>
+    <string name="settings_video">العرض</string>
     <string name="settings_scale">طريقة التكبير</string>
     <string name="settings_filter">الفلترة</string>
     <string name="settings_scanlines">خطوط المسح (٪)</string>
     <string name="settings_overscan">قص الحواف (٪)</string>
     <string name="settings_rotation">تدوير الصورة</string>
+    <string name="settings_zoom">تكبير الصورة (زوم)</string>
     <string name="settings_audio">الصوت</string>
+    <string name="settings_audio_enabled">تشغيل الصوت</string>
     <string name="settings_volume">مستوى الصوت</string>
     <string name="settings_emulation">المحاكاة</string>
     <string name="settings_rewind">طول الرجوع (ثانية)</string>
     <string name="settings_runahead">Run-ahead (تقليل التأخير)</string>
     <string name="settings_sram">ذاكرة البطارية</string>
-    <string name="settings_core_options">خيارات النواة</string>
+    <string name="settings_core_options">خيارات النواة المتقدمة</string>
     <string name="settings_restarts">بعض الخيارات تُطبَّق بعد إعادة تشغيل الروم</string>
     <string name="settings_power_cycle">أعد تشغيل الروم</string>
     <string name="settings_apply">طبّق</string>
     <string name="settings_layout">تخطيط الأزرار</string>
+    <string name="settings_colors">الألوان</string>
+    <string name="settings_colors_hint">الافتراضي = ألوان معالج العرض الأصلية (Nintendo RGB PPU) — لا تغيير على ألوان اللعبة. الخيارات الأخرى تحاكي شاشات أخرى.</string>
+    <string name="settings_controls_title">التحكم</string>
+    <string name="settings_edit_controls">افتح محرّر الأزرار (سحب وإفلات)</string>
+    <string name="settings_overlay_opacity">شفافية الأزرار</string>
+    <string name="settings_overlay_scale">حجم الأزرار</string>
+    <string name="settings_turbo">سرعة التربو (نقرة/ثانية)</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_version">الإصدار</string>
+    <string name="settings_palette_note_title">الألوان الأصلية</string>
+    <string name="settings_palette_note">يُستخدم جدول ألوان PPU الأصلي (Nintendo RGB) افتراضيًا.</string>
+    <string name="settings_license_title">الترخيص</string>
+    <string name="settings_license">GPL-3.0 — بدون أي روم داخل التطبيق.</string>
 
     <string name="close">إغلاق</string>
     <string name="back">رجوع</string>
     <string name="layout_classic">كلاسيكي (dpad يسار)</string>
     <string name="layout_mirrored">معكوس (dpad يمين)</string>
     <string name="layout_one_hand">يد واحدة (يمين)</string>
+    <string name="layout_custom">مخصص (محرّر)</string>
+
+    <!-- محرّر الأزرار -->
+    <string name="controls_editor_title">محرّر الأزرار</string>
+    <string name="controls_reset">إعادة الضبط</string>
+    <string name="controls_save">حفظ وإغلاق</string>
+    <string name="controls_hint">اسحب أي زر لتحريكه — اختر زرًا ثم عدّل حجمه وشفافيته بالأسفل</string>
+    <string name="controls_select_hint">اختر زرًا من الشريط أعلاه أو المسه على اللوحة لتعديله.</string>
+    <string name="controls_selected">الزر المحدد: %1$s</string>
+    <string name="controls_size_x">العرض</string>
+    <string name="controls_size_y">الارتفاع</string>
+    <string name="controls_opacity">الشفافية</string>
+
+    <!-- الغش -->
+    <string name="cheats_search">ابحث في مكتبة الغش…</string>
+    <string name="cheats_no_results">لا نتائج مطابقة.</string>
+    <string name="cheats_need_game">شغّل لعبة أولًا لتطبيق الغش.</string>
+    <string name="cheats_applied">تم تفعيل: %1$s</string>
+    <string name="cheats_applied_partial">تم تفعيل %1$d من %2$d أكواد لـ«%3$s»</string>
     <string name="load_failed_generic">تعذّر تحميل الروم.</string>
     <string name="surface_failed">تعذّر إرفاق سطح العرض: %1$s</string>
     <string name="rewind_failed">لا رجوع أكثر: %1$s</string>

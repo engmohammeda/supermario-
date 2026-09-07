@@ -8,7 +8,7 @@ needing one. "Needs device" means what it says: an assertion nobody has run yet.
 
 | Layer | Proven by | Where | Status |
 |---|---|---|---|
-| libretro loader, `retro_run` loop, frame timing | 83-check conformance suite on a generated NROM cartridge | `engine/src/test/native/test_host.cpp` | green locally (gcc, `-O1`) |
+| libretro loader, `retro_run` loop, frame timing | 86-check conformance suite on a generated NROM cartridge | `engine/src/test/native/test_host.cpp` | green locally (gcc, `-O1`) |
 | Memory model (peek/poke through SYSTEM_RAM / SAVE_RAM / `SET_MEMORY_MAPS`) | same suite | idem | green |
 | Save-state container (`MBSV`), reject-on-mismatch, replay determinism | same suite (pixel hash equality after save→run→load) | idem | green |
 | Rewind ring, `run_ahead`, fast-forward, pause semantics | same suite | idem | green |
@@ -16,7 +16,7 @@ needing one. "Needs device" means what it says: an assertion nobody has run yet.
 | Game Genie / Par / raw-poke decoding, host list == core list | same suite, cross-checked against `FCEUI_DecodeGG` inside the core | idem | green |
 | Core option table (labels vs values, deep copy of the core's array) | same suite + ASan/UBSan build | idem | green (ASan clean) |
 | Audio gain, mute, clamping | same suite | idem | green |
-| Presentation maths: scale modes, overscan crop, rotation, scanline period | `platform/common/render_plan` | 11 checks in the same suite (scale modes, crop, rotation, scanline period, clamps) | `engine/src/test/native/test_host.cpp` | green locally |
+| Presentation maths: scale modes, overscan crop, rotation, scanline period, view zoom | `platform/common/render_plan` | 14 checks in the same suite (scale modes, crop, rotation, scanline period, zoom in/out/clamp, zero window) | `engine/src/test/native/test_host.cpp` | green locally (86/0) |
 | Vendored core integrity | `check-source-list` + `cmp` against upstream | CI + docs/THIRD_PARTY.md | green |
 | **CMake for Android** | configure + build of both targets | CI job `android` | **needs CI** |
 | EGL/GLES2 presenter | `g++ -fsyntax-only` against real Khronos EGL/GLES2 headers, `-Werror` clean; no GPU run | local check | syntax only — **needs device** |

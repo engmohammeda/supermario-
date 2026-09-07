@@ -149,6 +149,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
                     prefs.lastRomPath = c.path
                     engine.applyRender(prefs.renderSettings())
                     engine.setVolume(prefs.volume)
+                    applyCoreDefaults()
                     applyOptionOverrides()
                     _paused = engine.isPaused
                     replaySurface()
@@ -296,6 +297,35 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
         engine.setVolume(prefs.volume)
     }
 
+    /** View zoom (0.25..4): part of the cheat "features" (تقريب / إبعاد). */
+    fun setZoom(z: Float) {
+        prefs.zoom = z
+        refreshPresentation()
+    }
+
+    fun nudgeZoom(delta: Float) = setZoom(prefs.zoom + delta)
+
+    // ------------------------------------------------------------------ palette
+    /**
+     * Sets the core's colour palette and keeps the choice in preferences. FCEUmm
+     * re-reads `fceumm_next_palette` every frame, so this is instant.
+     */
+    fun setPalette(key: String, apply: Boolean = true) {
+        prefs.palette = key
+        if (!apply || !engine.active) return
+        val rc = engine.setOption(PALETTE_OPTION, key)
+        if (rc == MbStatus.OK) refreshOptions()
+        else toast = s(R.string.option_failed, MbStatus.describe(rc, engine.lastError()))
+    }
+
+    private fun applyCoreDefaults() {
+        if (!engine.active) return
+        // The original FCEU default palette is a 1990s 5-bit approximation; the
+        // authentic PPU colours come from the core's Nintendo RGB PPU table, which
+        // is what "ألوان اللعبة الأصلية" means in the settings screen.
+        engine.setOption(PALETTE_OPTION, prefs.palette)
+    }
+
     fun flushBattery() {
         if (!engine.active) return
         viewModelScope.launch(Dispatchers.IO) {
@@ -405,6 +435,26 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
         return true
     }
 
+    /**
+     * Applies a curated cheat (one or more codes) to the running game and refreshes
+     * the list. Comes from the built-in library / one-tap feature buttons.
+     */
+    fun applyCheatCodes(codes: List<String>, title: String, raw: Boolean = false) {
+        if (!engine.active) {
+            toast = s(R.string.cheats_need_game)
+            return
+        }
+        val label = if (raw) "$title (RAM)" else title
+        var added = 0
+        for (code in codes) {
+            if (engine.addCheat(code, label) >= 0) added++
+        }
+        reloadCheatList()
+        if (added > 0) persistCheats()
+        toast = if (added == codes.size) s(R.string.cheats_applied, title)
+        else s(R.string.cheats_applied_partial, added, codes.size, title)
+    }
+
     fun setCheatEnabled(index: Int, enabled: Boolean) {
         if (!engine.active) return
         val c = cheats.getOrNull(index) ?: return
@@ -478,6 +528,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
             val rc = engine.powerCycle()
             withContext(Dispatchers.Main) {
                 if (rc != MbStatus.OK) error = MbStatus.describe(rc, engine.lastError())
+                applyCoreDefaults()
                 applyOptionOverrides()
                 // The host keeps its own cheat list across a power cycle, so only the
                 // file's contents need re-adding when that list is somehow empty.
@@ -494,5 +545,8 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
     companion object {
         /** Index of the quick save/load slot, past the 10 numbered ones. */
         const val QUICK = 10
+
+        /** FCEUmm's palette option key. */
+        const val PALETTE_OPTION = "fceumm_next_palette"
     }
 }

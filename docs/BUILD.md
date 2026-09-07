@@ -17,9 +17,10 @@ make -C engine/src/test/native -j"$(nproc)" run
 That single command: generates a probe cartridge (`tools/gen_test_rom.py`, an
 iNES NROM written by this repo, 6502 assembly included), builds the core as
 `libmbcore_fceumm.so` from the vendored `Makefile.common`, builds the host, and runs
-the conformance suite (83 checks: bring-up, frame counting against NMI, palette
+the conformance suite (86 checks: bring-up, frame counting against NMI, palette
 reaching the screen, save states, rewind, SRAM, Game Genie/Par decoding against the
-core's own decoder, core options, audio gain, clean shutdown).
+core's own decoder, core options, audio gain, presentation plan incl. view zoom,
+clean shutdown).
 
 Other targets in the same directory:
 
@@ -82,11 +83,13 @@ Debug builds compile for `arm64-v8a` only — the core is 649 C files and one AB
 a laptop build under a minute. Release adds `armeabi-v7a` and `x86_64`
 (`app`/`engine` build files, `ndk { abiFilters … }`).
 
-Release signing is deliberately not in the build files: `assembleRelease` produces an
-unsigned APK. To ship one, create `app/keystore.properties` (git-ignored) with
-`storeFile`, `storePassword`, `keyAlias`, `keyPassword`, and add the usual
-`signingConfigs { create("release") { … } }` block — CI reads the same values from
-repository secrets.
+Release signing: `app/build.gradle.kts` reads `MARIOBOX_KEYSTORE_PATH`,
+`MARIOBOX_KEYSTORE_PASSWORD`, `MARIOBOX_KEY_ALIAS` and `MARIOBOX_KEY_PASSWORD` from
+the environment. Local machines can export those, or leave unset to get a debug-key
+signed APK for sideload testing; CI provides them from repository secrets
+(`MARIOBOX_KEYSTORE_B64` is base64-decoded in the workflow). The release build is
+R8-minified + resource-shrunk, with ProGuard keeps for the JNI surface in
+`app/proguard-rules.pro`.
 
 ### What actually gets built
 
@@ -102,12 +105,12 @@ CMake target instead of a link-time decision, and why a core with an undefined
 symbol fails as a readable "core missing" toast rather than a load-time crash of the
 whole process.
 
-## 3. CI
+## 3. CI & releases
 
-`.ci/android-build.yml` is the workflow definition. It lives outside
-`.github/workflows/` **only** because the credential that pushes this branch (a
-GitHub App) is not permitted to create files under `workflow` paths. Activate it
-from a credential that is:
+`.ci/android-build.yml` drives everything. It lives outside
+`.github/workflows/` because the credential that pushes this branch (a GitHub App)
+is not permitted to create or update files under `workflow` paths. Activate it once
+with a credential that is (repository owner, or an App with `workflows` write):
 
 ```sh
 mkdir -p .github/workflows
@@ -115,10 +118,20 @@ git mv .ci/android-build.yml .github/workflows/android-build.yml
 git push
 ```
 
-Jobs: `native` (host tests + `check-source-list` + a CMake configure) then
-`android` (`testDebugUnitTest`, `assembleDebug`, `assembleRelease`, informational
-`lintDebug`, APKs uploaded with SHA256). No AAB, no Telegram: this is a sideloaded
-app, so a universal APK is the artifact (docs/PLAN.md §7 override).
+The workflow itself:
+
+1. **native** — host tests + `check-source-list` + a CMake configure (N1).
+2. **android** — `testDebugUnitTest`, `assembleDebug`, R8-minified
+   `assembleRelease` (optionally signed from secrets), informational `lintDebug`,
+   then versioned artifact names (`MarioBox-vX.Y.Z-*.apk`) + `SHA256SUMS`.
+3. **release** — on a `v*` tag (or `workflow_dispatch`): creates/updates the
+   GitHub Release with both APKs and checksums, then sends the release APK to
+   Telegram using the `BOT_TOKEN` / `CHAT_ID` secrets (CHAT_ID defaults to
+   `5926222376`; without `BOT_TOKEN` the step skips cleanly).
+
+Version: `versionName` comes from the tag (`v0.2.0` → `0.2.0`), `workflow_dispatch`
+input, or `git describe`; `versionCode` is `git rev-list --count HEAD`. No AAB:
+this is a sideloaded app, so a universal APK is the artifact (PLAN.md §7 override).
 
 ## 4. Troubleshooting
 

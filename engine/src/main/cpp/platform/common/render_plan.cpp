@@ -104,44 +104,58 @@ PresentPlan make_plan(uint32_t win_w, uint32_t win_h, uint32_t src_w, uint32_t s
   if (!(scale > 0.0))
     scale = 1.0;
 
+  /* View zoom. 1.0 is a no-op; >1 magnifies by cropping the sampled rect (the
+   * same cover path FILL_CROP uses); <1 shrinks into a centred letterbox. */
+  double zoom = double(cfg.zoom);
+  if (!(zoom > 0.0) || zoom != zoom) /* also catches NaN */
+    zoom = 1.0;
+  if (zoom < 0.25)
+    zoom = 0.25;
+  if (zoom > 4.0)
+    zoom = 4.0;
+  if (cfg.scale_mode != MB_SCALE_STRETCH)
+    scale *= zoom;
+
   double rw, rh, rx = 0, ry = 0;
   if (cfg.scale_mode == MB_SCALE_STRETCH) {
-    rw = box_w;
-    rh = box_h;
-    centre(box_w, box_h, rw, rh, &rx, &ry);
+    rw = box_w * zoom;
+    rh = box_h * zoom;
   } else {
     rw = vcols * unit_w * scale;
     rh = vrows * scale;
-    if (cfg.scale_mode == MB_SCALE_FILL_CROP && (rw > box_w || rh > box_h)) {
-      /* Cover: trim the sampled rect so the overflow is cropped off the picture
-       * rather than squashing it or leaving bars. */
-      if (rw > box_w + 0.5) {
-        const double drop_cols = (vcols - vcols * (box_w / rw)) * 0.5;
-        const double du = drop_cols / double(src_w);
-        p.u0 = float(u_edge + du);
-        p.u1 = float(1.0 - u_edge - du);
-        p.visible_cols = float(vcols - 2.0 * drop_cols);
-        p.crop_x = int32_t(std::lround((rw - box_w) * 0.5));
-        rw = box_w;
-      }
-      if (rh > box_h + 0.5) {
-        const double drop_rows = (vrows - vrows * (box_h / rh)) * 0.5;
-        const double dv = drop_rows / double(src_h);
-        p.v0 = float(v_edge + dv);
-        p.v1 = float(1.0 - v_edge - dv);
-        p.visible_rows = float(vrows - 2.0 * drop_rows);
-        p.crop_y = int32_t(std::lround((rh - box_h) * 0.5));
-        rh = box_h;
-      }
-    } else {
-      /* FIT and FILL both clamp rather than crop: an integer scale can exceed the
-       * box only when the window is smaller than a source pixel row. */
-      if (rw > box_w)
-        rw = box_w;
-      if (rh > box_h)
-        rh = box_h;
-      centre(box_w, box_h, rw, rh, &rx, &ry);
+  }
+  const bool want_crop = cfg.scale_mode == MB_SCALE_FILL_CROP || zoom != 1.0;
+  if (want_crop && (rw > box_w + 0.5 || rh > box_h + 0.5)) {
+    /* Cover: trim the sampled rect so the overflow is cropped off the picture
+     * rather than squashing it or leaving bars. Zoom = 100% and FIT never get
+     * here, so the default letterbox keeps its old shape exactly. */
+    if (rw > box_w + 0.5) {
+      const double drop_cols = (vcols - vcols * (box_w / rw)) * 0.5;
+      const double du = drop_cols / double(src_w);
+      p.u0 = float(u_edge + du);
+      p.u1 = float(1.0 - u_edge - du);
+      p.visible_cols = float(vcols - 2.0 * drop_cols);
+      p.crop_x = int32_t(std::lround((rw - box_w) * 0.5));
+      rw = box_w;
     }
+    if (rh > box_h + 0.5) {
+      const double drop_rows = (vrows - vrows * (box_h / rh)) * 0.5;
+      const double dv = drop_rows / double(src_h);
+      p.v0 = float(v_edge + dv);
+      p.v1 = float(1.0 - v_edge - dv);
+      p.visible_rows = float(vrows - 2.0 * drop_rows);
+      p.crop_y = int32_t(std::lround((rh - box_h) * 0.5));
+      rh = box_h;
+    }
+    centre(box_w, box_h, rw, rh, &rx, &ry);
+  } else {
+    /* FIT and FILL both clamp rather than crop: an integer scale can exceed the
+     * box only when the window is smaller than a source pixel row. */
+    if (rw > box_w)
+      rw = box_w;
+    if (rh > box_h)
+      rh = box_h;
+    centre(box_w, box_h, rw, rh, &rx, &ry);
   }
 
   p.scanline_amount = float(std::max(0, std::min(100, cfg.scanlines_percent))) / 100.0f;
@@ -177,7 +191,7 @@ PresentPlan make_plan(uint32_t win_w, uint32_t win_h, uint32_t src_w, uint32_t s
       swap ? double(p.viewport.width) : double(p.viewport.height);
   p.row_height_px = p.scanline_rows > 0.f ? float(row_axis / double(p.scanline_rows)) : 1.f;
   const double sc = p.scanline_rows > 0.f ? row_axis / double(p.scanline_rows) : 0.0;
-  p.scale_is_integer = cfg.scale_mode != MB_SCALE_STRETCH &&
+  p.scale_is_integer = zoom == 1.0 && cfg.scale_mode != MB_SCALE_STRETCH &&
                        (cfg.scale_mode == MB_SCALE_INTEGER ||
                         (sc >= 1.0 && std::fabs(sc - std::round(sc)) < 0.01));
 
