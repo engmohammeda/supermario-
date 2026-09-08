@@ -113,11 +113,12 @@ jobs:
             echo "MARIOBOX_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
             echo "MARIOBOX_KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
             echo "MARIOBOX_KEY_PASSWORD=$KS_KEY_PASS" >> "$GITHUB_ENV"
-          elif [ -f "debug.keystore.base64" ]; then
+          fi
+          if [ ! -f "debug.keystore" ] && [ -f "debug.keystore.base64" ]; then
             echo "Restoring persistent repo keystore from debug.keystore.base64..."
             base64 -d debug.keystore.base64 > debug.keystore
           elif [ ! -f "debug.keystore" ]; then
-            echo "Generating new debug keystore..."
+            echo "Generating fallback debug keystore..."
             keytool -genkeypair -v \
               -keystore "debug.keystore" \
               -storepass android \

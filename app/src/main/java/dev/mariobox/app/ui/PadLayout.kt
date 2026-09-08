@@ -73,9 +73,9 @@ object PadLayout {
         PadAction.SELECT to Placement(0.43f, 0.85f, 0.12f, 0.08f),
         PadAction.TURBO_A to Placement(0.91f, 0.45f, 0.09f, 0.07f),
         PadAction.TURBO_B to Placement(0.77f, 0.65f, 0.09f, 0.07f),
-        PadAction.REWIND to Placement(0.65f, 0.12f, 0.10f, 0.08f),
-        PadAction.QUICK to Placement(0.50f, 0.12f, 0.10f, 0.08f),
-        PadAction.FAST_FWD to Placement(0.35f, 0.12f, 0.10f, 0.08f),
+        PadAction.REWIND to Placement(0.65f, 0.14f, 0.10f, 0.08f),
+        PadAction.QUICK to Placement(0.50f, 0.14f, 0.10f, 0.08f),
+        PadAction.FAST_FWD to Placement(0.35f, 0.14f, 0.10f, 0.08f),
     )
 
     /** The editable base map, one {@link ControlPlacement} per action. */

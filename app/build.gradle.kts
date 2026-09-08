@@ -1,3 +1,5 @@
+import java.util.Base64
+
 // :app -- Compose UI, no emulation knowledge beyond :engine's API.
 plugins {
     alias(libs.plugins.android.application)
@@ -32,7 +34,16 @@ android {
     signingConfigs {
         create("debugConfig") {
             val rootKeystore = file("${rootDir}/debug.keystore")
+            val rootKeystoreB64 = file("${rootDir}/debug.keystore.base64")
             val homeKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            if (!rootKeystore.exists() && rootKeystoreB64.exists()) {
+                try {
+                    val decoded = Base64.getDecoder().decode(rootKeystoreB64.readText().trim())
+                    rootKeystore.writeBytes(decoded)
+                } catch (_: Exception) {
+                    // Ignore decoding error
+                }
+            }
             storeFile = if (rootKeystore.exists()) {
                 rootKeystore
             } else if (homeKeystore.exists()) {
@@ -63,7 +74,7 @@ android {
         }
         getByName("release") {
             signingConfig = if (hasReleaseKeystore) signingConfigs.getByName("release")
-            else signingConfigs.getByName("debug")
+            else signingConfigs.getByName("debugConfig")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

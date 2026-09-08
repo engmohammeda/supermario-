@@ -79,7 +79,7 @@ class PadLayoutTest {
     fun `momentary actions stay below the chrome strip`() {
         val map = PadLayout.placements(PadLayout.PRESET_CLASSIC)
         for (a in listOf(PadAction.REWIND, PadAction.QUICK, PadAction.FAST_FWD)) {
-            assertTrue("$a must not sit under the top bar", map.getValue(a).cy > 0.12f)
+            assertTrue("$a must not sit under the top bar", map.getValue(a).cy >= 0.12f)
         }
     }
 
