@@ -169,7 +169,7 @@ if(MB_BUILD_CORES AND MB_CORE_FCEUMM)
 
   add_library(mbcore_fceumm SHARED ${MB_FCEUMM_ABS})
   mariobox_core_common(mbcore_fceumm ${MB_FCEUMM_INC})
-  target_compile_definitions(mbcore_fceumm PRIVATE __LIBRETRO__ ${MBCORE_FCEUMM_DEFINES})
+  target_compile_definitions(mbcore_fceumm PRIVATE __LIBRETRO__ FRONTEND_SUPPORTS_ARGB888 ${MBCORE_FCEUMM_DEFINES})
   target_compile_options(mbcore_fceumm PRIVATE ${MB_FCEUMM_FORCE})
   if(MB_HAVE_ZLIB)
     target_compile_definitions(mbcore_fceumm PRIVATE MB_HAVE_ZLIB)

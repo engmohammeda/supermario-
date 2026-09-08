@@ -1238,7 +1238,8 @@ mb_status EmuHost::do_load() {
   /* Reset before installing the callbacks, not after: a core reports its pixel
    * format and its option table from inside retro_set_environment(), so
    * anything we wrote afterwards would clobber the core's answer. */
-  pixel_format_ = RETRO_PIXEL_FORMAT_XRGB8888;
+  /* Default format per libretro ABI is 0RGB1555 until the core requests otherwise. */
+  pixel_format_ = RETRO_PIXEL_FORMAT_0RGB1555;
   opt_defs_v1_ = nullptr;
   opt_defs_owned_.clear();
   opt_strs_.clear();

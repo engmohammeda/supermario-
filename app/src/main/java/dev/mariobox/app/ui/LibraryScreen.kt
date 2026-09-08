@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,7 +58,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -621,7 +624,7 @@ private fun EmptyStateView(onImport: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -630,16 +633,21 @@ private fun EmptyStateView(onImport: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(90.dp)
-                    .clip(CircleShape)
-                    .background(MarioBoxColors.SurfaceElevated)
-                    .border(1.dp, MarioBoxColors.SurfaceBorderGlow, CircleShape),
+                    .size(150.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .shadow(16.dp, RoundedCornerShape(24.dp), spotColor = MarioBoxColors.PrimaryRed)
+                    .border(2.dp, MarioBoxColors.PrimaryRedGlow, RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🕹️", fontSize = 42.sp)
+                Image(
+                    painter = painterResource(R.drawable.img_mario_cover),
+                    contentDescription = "MarioBox Retro Poster",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(22.dp))
 
             Text(
                 text = stringResource(R.string.library_title),
