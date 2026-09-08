@@ -145,17 +145,8 @@ jobs:
           echo "MARIOBOX_KEY_PASSWORD=$KS_KEY_PASS" >> "$GITHUB_ENV"
           echo "keystore_ready=true" >> "$GITHUB_OUTPUT"
 
-      - name: Gradle unit tests (N2)
-        run: ./gradlew testDebugUnitTest --no-daemon --no-build-cache --stacktrace
-
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon --no-build-cache --stacktrace
-        env:
-          ORG_GRADLE_PROJECT_versionName: ${{ steps.version.outputs.version }}
-          ORG_GRADLE_PROJECT_versionCode: ${{ steps.version.outputs.version_code }}
-
-      - name: Assemble release APK (R8 + optional signing)
-        run: ./gradlew assembleRelease --no-daemon --no-build-cache --stacktrace
+      - name: Build Android APKs (Unit tests, Debug, Release)
+        run: ./gradlew clean testDebugUnitTest assembleDebug assembleRelease --no-daemon --no-build-cache --stacktrace --info
         env:
           ORG_GRADLE_PROJECT_versionName: ${{ steps.version.outputs.version }}
           ORG_GRADLE_PROJECT_versionCode: ${{ steps.version.outputs.version_code }}

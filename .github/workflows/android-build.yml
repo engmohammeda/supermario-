@@ -98,14 +98,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Gradle unit tests (N2)
-        run: ./gradlew testDebugUnitTest --no-daemon --no-build-cache --stacktrace
-
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon --no-build-cache --stacktrace
-
-      - name: Assemble release APK
-        run: ./gradlew assembleRelease --no-daemon --no-build-cache --stacktrace
+      - name: Build Android APKs (Unit tests, Debug, Release)
+        run: ./gradlew clean testDebugUnitTest assembleDebug assembleRelease --no-daemon --no-build-cache --stacktrace --info
 
       - name: Lint (informational)
         continue-on-error: true
