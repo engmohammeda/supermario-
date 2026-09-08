@@ -304,7 +304,6 @@ void thumb_downscale(const uint8_t *src, uint32_t w, uint32_t h, uint32_t pitch,
     const uint8_t *row = src + size_t(y * sy) * pitch;
     uint8_t *dst = out->data() + size_t(y) * ow * 4u;
     for (uint32_t x = 0; x < ow; x++) {
-      const uint8_t *px = row + size_t(x * sx) * 4u;
       /* 2x2 box average keeps edges from crawling without a float loop. */
       uint32_t acc[4] = {0, 0, 0, 0};
       uint32_t cnt = 0;

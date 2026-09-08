@@ -127,7 +127,7 @@ bool decode_par(const std::string &code, DecodedCheat *out) {
 /* "$DDAA:VV?CC" — raw write with an optional compare byte. */
 bool decode_raw(const std::string &code, DecodedCheat *out) {
   std::string s = code;
-  if (!s.empty() && (s[0] == '$' || s[0] == '0' && (s.size() > 1 && (s[1] == 'x' || s[1] == 'X')))) {
+  if (!s.empty() && (s[0] == '$' || (s[0] == '0' && (s.size() > 1 && (s[1] == 'x' || s[1] == 'X'))))) {
     if (s[0] == '$')
       s.erase(s.begin());
     else
