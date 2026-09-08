@@ -38,6 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -121,7 +130,7 @@ fun SheetHost(
                                 .clip(CircleShape)
                                 .background(MarioBoxColors.Surface)
                         ) {
-                            Text("✕", color = MarioBoxColors.TextSecondary, fontSize = 13.sp)
+                            Icon(Icons.Filled.Close, contentDescription = "Close", tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(16.dp))
                         }
                     }
 
@@ -132,16 +141,16 @@ fun SheetHost(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        PanelTab(stringResource(R.string.states_title), "💾", sheet == Sheet.States) {
+                        PanelTab(stringResource(R.string.states_title), Icons.Filled.Save, sheet == Sheet.States) {
                             onSelect(Sheet.States)
                         }
-                        PanelTab(stringResource(R.string.cheats_title), "🔮", sheet == Sheet.Cheats) {
+                        PanelTab(stringResource(R.string.cheats_title), Icons.Filled.AutoFixHigh, sheet == Sheet.Cheats) {
                             onSelect(Sheet.Cheats)
                         }
-                        PanelTab(stringResource(R.string.settings_title), "⚙️", sheet == Sheet.Settings) {
+                        PanelTab(stringResource(R.string.settings_title), Icons.Filled.Settings, sheet == Sheet.Settings) {
                             onSelect(Sheet.Settings)
                         }
-                        PanelTab(stringResource(R.string.controls_title), "🎛", sheet == Sheet.Controls) {
+                        PanelTab(stringResource(R.string.controls_title), Icons.Filled.Gamepad, sheet == Sheet.Controls) {
                             onSelect(Sheet.Controls)
                         }
                     }
@@ -166,7 +175,7 @@ fun SheetHost(
 }
 
 @Composable
-private fun RowScope.PanelTab(label: String, icon: String, selected: Boolean, onClick: () -> Unit) {
+private fun RowScope.PanelTab(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(11.dp),
@@ -184,8 +193,8 @@ private fun RowScope.PanelTab(label: String, icon: String, selected: Boolean, on
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(icon, fontSize = 12.sp)
-            Spacer(Modifier.width(4.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (selected) Color.White else MarioBoxColors.TextPrimary)
+            Spacer(Modifier.width(6.dp))
             Text(
                 label,
                 maxLines = 1,
@@ -227,7 +236,9 @@ private fun StatesSheet(vm: EmulatorViewModel) {
                 onClick = { vm.flushBattery() },
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("🔋 " + stringResource(R.string.battery_flush), color = MarioBoxColors.AccentGreen, fontSize = 11.sp)
+                Icon(Icons.Filled.BatteryFull, contentDescription = null, tint = MarioBoxColors.AccentGreen, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.battery_flush), color = MarioBoxColors.AccentGreen, fontSize = 11.sp)
             }
         }
 

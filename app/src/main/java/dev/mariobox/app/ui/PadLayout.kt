@@ -9,19 +9,19 @@ enum class PadAction {
     /** Human-readable Arabic label used by the editor list. */
     val editorLabel: String
         get() = when (this) {
-            UP -> "▲ لأعلى"
-            DOWN -> "▼ لأسفل"
-            LEFT -> "◀ يسار"
-            RIGHT -> "▶ يمين"
+            UP -> "لأعلى"
+            DOWN -> "لأسفل"
+            LEFT -> "يسار"
+            RIGHT -> "يمين"
             A -> "A"
             B -> "B"
             START -> "بدء"
             SELECT -> "اختيار"
-            TURBO_A -> "A⚡ تربو"
-            TURBO_B -> "B⚡ تربو"
-            REWIND -> "⏪ رجوع"
-            QUICK -> "💾 حفظ سريع"
-            FAST_FWD -> "⏩ تسريع"
+            TURBO_A -> "تربو A"
+            TURBO_B -> "تربو B"
+            REWIND -> "رجوع"
+            QUICK -> "حفظ سريع"
+            FAST_FWD -> "تسريع"
         }
 }
 
@@ -63,16 +63,16 @@ object PadLayout {
 
     /** Classic pad-on-the-left layout. The other two are derived from it. */
     private val classic: Map<PadAction, Placement> = mapOf(
-        PadAction.UP to Placement(0.14f, 0.52f, 0.14f, 0.12f),
-        PadAction.DOWN to Placement(0.14f, 0.76f, 0.14f, 0.12f),
-        PadAction.LEFT to Placement(0.07f, 0.64f, 0.14f, 0.12f),
-        PadAction.RIGHT to Placement(0.23f, 0.64f, 0.14f, 0.12f),
-        PadAction.B to Placement(0.83f, 0.74f, 0.14f, 0.14f),
-        PadAction.A to Placement(0.93f, 0.58f, 0.14f, 0.14f),
+        PadAction.UP to Placement(0.14f, 0.50f, 0.12f, 0.10f),
+        PadAction.DOWN to Placement(0.14f, 0.78f, 0.12f, 0.10f),
+        PadAction.LEFT to Placement(0.06f, 0.64f, 0.12f, 0.10f),
+        PadAction.RIGHT to Placement(0.22f, 0.64f, 0.12f, 0.10f),
+        PadAction.B to Placement(0.81f, 0.74f, 0.12f, 0.12f),
+        PadAction.A to Placement(0.93f, 0.58f, 0.12f, 0.12f),
         PadAction.START to Placement(0.62f, 0.06f, 0.12f, 0.08f),
         PadAction.SELECT to Placement(0.50f, 0.06f, 0.12f, 0.08f),
-        PadAction.TURBO_A to Placement(0.78f, 0.42f, 0.10f, 0.08f),
-        PadAction.TURBO_B to Placement(0.66f, 0.42f, 0.10f, 0.08f),
+        PadAction.TURBO_A to Placement(0.78f, 0.42f, 0.09f, 0.07f),
+        PadAction.TURBO_B to Placement(0.66f, 0.42f, 0.09f, 0.07f),
         PadAction.REWIND to Placement(0.38f, 0.20f, 0.10f, 0.08f),
         PadAction.QUICK to Placement(0.27f, 0.20f, 0.10f, 0.08f),
         PadAction.FAST_FWD to Placement(0.16f, 0.20f, 0.10f, 0.08f),

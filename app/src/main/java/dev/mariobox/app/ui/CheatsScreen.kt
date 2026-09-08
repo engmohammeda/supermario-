@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -26,6 +27,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,11 +69,13 @@ fun CheatsScreen(vm: EmulatorViewModel) {
 
     Column(Modifier.fillMaxSize()) {
         // One-tap features ---------------------------------------------------
-        LazyRow(
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 2.dp)
         ) {
-            items(CheatLibrary.quickActions, key = { it.id }) { a ->
+            CheatLibrary.quickActions.forEach { a ->
                 Surface(
                     onClick = {
                         a.zoom?.let { vm.setZoom(it) }
@@ -85,18 +98,17 @@ fun CheatsScreen(vm: EmulatorViewModel) {
 
         // View features (zoom) — instant, reversible, saved with the settings. --
         Spacer(Modifier.height(6.dp))
-        LazyRow(
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 2.dp)
         ) {
-            items(
-                listOf(
-                    Triple("zoom_out", "➖ إبعاد", -0.25f),
-                    Triple("zoom_in", "➕ تقريب", 0.25f),
-                    Triple("zoom_reset", "1:1 إعادة", 0f),
-                ),
-                key = { it.first }
-            ) { (id, label, delta) ->
+            listOf(
+                Triple(Icons.Filled.Remove, "إبعاد", -0.25f),
+                Triple(Icons.Filled.Add, "تقريب", 0.25f),
+                Triple(Icons.Filled.Restore, "إعادة 1:1", 0f),
+            ).forEach { (icon, label, delta) ->
                 Surface(
                     onClick = {
                         val next = if (delta == 0f) 1f else (vm.prefs.zoom + delta)
@@ -108,13 +120,16 @@ fun CheatsScreen(vm: EmulatorViewModel) {
                     color = MarioBoxColors.SecondaryCyan.copy(alpha = 0.14f),
                     modifier = Modifier.border(1.dp, MarioBoxColors.SecondaryCyan, RoundedCornerShape(10.dp))
                 ) {
-                    Text(
-                        "$label · ${(zoomLevel * 100).toInt()}%",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "$label · ${(zoomLevel * 100).toInt()}%",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -205,9 +220,13 @@ private fun CategoryStrip(
     selected: CheatLibrary.Category?,
     onPick: (CheatLibrary.Category?) -> Unit,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        item { CategoryChip(null, "الكل", selected == null) { onPick(null) } }
-        items(CheatLibrary.Category.entries) { c ->
+    @OptIn(ExperimentalLayoutApi::class)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        CategoryChip(null, "الكل", selected == null) { onPick(null) }
+        CheatLibrary.Category.entries.forEach { c ->
             CategoryChip(c, categoryLabel(c), selected == c) { onPick(c) }
         }
     }
@@ -337,7 +356,7 @@ private fun AppliedCheatList(vm: EmulatorViewModel, cheats: List<Cheat>) {
     if (cheats.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🔮", fontSize = 34.sp)
+                Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(34.dp), tint = MarioBoxColors.TextSecondary)
                 Spacer(Modifier.height(8.dp))
                 Text(
                     stringResource(R.string.cheats_none),
@@ -389,7 +408,7 @@ private fun AppliedCheatList(vm: EmulatorViewModel, cheats: List<Cheat>) {
                     )
                 }
                 IconButton(onClick = { vm.removeCheat(index) }) {
-                    Text("🗑", color = MarioBoxColors.TextTertiary)
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = MarioBoxColors.TextTertiary, modifier = Modifier.size(18.dp))
                 }
             }
         }

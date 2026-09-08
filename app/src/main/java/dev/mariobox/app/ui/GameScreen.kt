@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -24,6 +25,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -158,28 +169,28 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 QuickBarButton(
-                    icon = if (vm.paused) "▶" else "⏸",
+                    icon = if (vm.paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                     isHighlight = vm.paused,
                     onClick = { vm.togglePause() }
                 )
                 QuickBarButton(
-                    icon = "💾",
+                    icon = Icons.Filled.Save,
                     onClick = { onSheet(Sheet.States) }
                 )
                 QuickBarButton(
-                    icon = "🔮",
+                    icon = Icons.Filled.AutoFixHigh,
                     onClick = { onSheet(Sheet.Cheats) }
                 )
                 QuickBarButton(
-                    icon = "🎛",
+                    icon = Icons.Filled.Gamepad,
                     onClick = { onSheet(Sheet.Controls) }
                 )
                 QuickBarButton(
-                    icon = "⚙️",
+                    icon = Icons.Filled.Settings,
                     onClick = { onSheet(Sheet.Settings) }
                 )
                 QuickBarButton(
-                    icon = "🚪",
+                    icon = Icons.Filled.ExitToApp,
                     onClick = onBack
                 )
             }
@@ -224,7 +235,7 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
 
 @Composable
 private fun QuickBarButton(
-    icon: String,
+    icon: ImageVector,
     isHighlight: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -243,7 +254,7 @@ private fun QuickBarButton(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(icon, fontSize = 13.sp)
+            Icon(icon, contentDescription = null, tint = if (isHighlight) Color.White else MarioBoxColors.TextPrimary, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -352,14 +363,14 @@ private object OverlayLabels {
         PadAction.B to stringResource(R.string.btn_b),
         PadAction.START to stringResource(R.string.btn_start),
         PadAction.SELECT to stringResource(R.string.btn_select),
-        PadAction.TURBO_A to "A⚡",
-        PadAction.TURBO_B to "B⚡",
-        PadAction.UP to "▲",
-        PadAction.DOWN to "▼",
-        PadAction.LEFT to "◀",
-        PadAction.RIGHT to "▶",
-        PadAction.REWIND to "⏪",
-        PadAction.QUICK to "💾",
-        PadAction.FAST_FWD to "⏩",
+        PadAction.TURBO_A to "A*",
+        PadAction.TURBO_B to "B*",
+        PadAction.UP to "UP",
+        PadAction.DOWN to "DOWN",
+        PadAction.LEFT to "LEFT",
+        PadAction.RIGHT to "RIGHT",
+        PadAction.REWIND to "<<",
+        PadAction.QUICK to "SAVE",
+        PadAction.FAST_FWD to ">>",
     )
 }

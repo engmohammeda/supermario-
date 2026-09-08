@@ -24,6 +24,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,8 +77,27 @@ object MarioPalettes {
  */
 @Composable
 fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
+
     val prefs = vm.prefs
     var paletteKey by remember { mutableStateOf(prefs.palette) }
+    var scaleMode by remember { mutableStateOf(prefs.scaleMode) }
+    var filterMode by remember { mutableStateOf(prefs.filterMode) }
+    var scanlinesPercent by remember { mutableStateOf(prefs.scanlinesPercent.toFloat()) }
+    var overscanCrop by remember { mutableStateOf(prefs.overscanCrop.toFloat()) }
+    var zoom by remember { mutableStateOf(prefs.zoom) }
+    var rotation by remember { mutableStateOf(prefs.rotation) }
+    var audioEnabled by remember { mutableStateOf(prefs.audioEnabled) }
+    var volume by remember { mutableStateOf(prefs.volume) }
+    var overlayLayout by remember { mutableStateOf(prefs.overlayLayout) }
+    var overlayVisible by remember { mutableStateOf(prefs.overlayVisible) }
+    var overlayOpacity by remember { mutableStateOf(prefs.overlayOpacity) }
+    var overlayScale by remember { mutableStateOf(prefs.overlayScale) }
+    var turboHz by remember { mutableStateOf(prefs.turboHz.toFloat()) }
+    var rewindSeconds by remember { mutableStateOf(prefs.rewindSeconds.toFloat()) }
+    var runAhead by remember { mutableStateOf(prefs.runAhead.toFloat()) }
+    var sramEnabled by remember { mutableStateOf(prefs.sramEnabled) }
+    var autoSaveOnExit by remember { mutableStateOf(prefs.autoSaveOnExit) }
+
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -77,54 +106,54 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- video
         item {
             SectionCard(
-                icon = "🖥",
+                icon = Icons.Filled.Tv,
                 title = stringResource(R.string.settings_video)
             ) {
                 SegmentedRow(
                     stringResource(R.string.settings_scale),
                     RenderSettings.scaleNames,
-                    prefs.scaleMode,
+                    scaleMode,
                 ) {
-                    prefs.scaleMode = it
+                    scaleMode = it; prefs.scaleMode = it
                     vm.refreshPresentation()
                 }
                 SegmentedRow(
                     stringResource(R.string.settings_filter),
                     RenderSettings.filterNames,
-                    prefs.filterMode,
+                    filterMode,
                 ) {
-                    prefs.filterMode = it
+                    filterMode = it; prefs.filterMode = it
                     vm.refreshPresentation()
                 }
                 SliderRow(
                     stringResource(R.string.settings_scanlines),
-                    prefs.scanlinesPercent.toFloat(), 0f, 100f,
+                    scanlinesPercent, 0f, 100f,
                 ) {
-                    prefs.scanlinesPercent = it.toInt()
+                    scanlinesPercent = it; prefs.scanlinesPercent = it.toInt()
                     vm.refreshPresentation()
                 }
                 SliderRow(
                     stringResource(R.string.settings_overscan),
-                    prefs.overscanCrop.toFloat(), 0f, 25f,
+                    overscanCrop, 0f, 25f,
                 ) {
-                    prefs.overscanCrop = it.toInt()
+                    overscanCrop = it; prefs.overscanCrop = it.toInt()
                     vm.refreshPresentation()
                 }
                 SliderRow(
                     stringResource(R.string.settings_zoom),
-                    prefs.zoom,
+                    zoom,
                     RenderSettings.ZOOM_MIN,
                     RenderSettings.ZOOM_MAX,
                 ) {
-                    prefs.zoom = it
+                    zoom = it; prefs.zoom = it
                     vm.refreshPresentation()
                 }
                 SegmentedRow(
                     stringResource(R.string.settings_rotation),
                     listOf("0°", "90°", "180°"),
-                    when (prefs.rotation) { 90 -> 1; 180 -> 2; else -> 0 },
+                    when (rotation) { 90 -> 1; 180 -> 2; else -> 0 },
                 ) {
-                    prefs.setRotationDegrees(listOf(0, 90, 180)[it])
+                    rotation = listOf(0, 90, 180)[it]; prefs.setRotationDegrees(rotation)
                     vm.refreshPresentation()
                 }
             }
@@ -133,7 +162,7 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- colors
         item {
             SectionCard(
-                icon = "🎨",
+                icon = Icons.Filled.Palette,
                 title = stringResource(R.string.settings_colors)
             ) {
                 Text(
@@ -155,14 +184,14 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- audio
         item {
             SectionCard(
-                icon = "🔊",
+                icon = Icons.Filled.VolumeUp,
                 title = stringResource(R.string.settings_audio)
             ) {
-                SwitchRow(stringResource(R.string.settings_audio_enabled), prefs.audioEnabled) {
-                    prefs.audioEnabled = it
+                SwitchRow(stringResource(R.string.settings_audio_enabled), audioEnabled) {
+                    audioEnabled = it
                 }
-                SliderRow(stringResource(R.string.settings_volume), prefs.volume, 0f, 1f) {
-                    prefs.volume = it
+                SliderRow(stringResource(R.string.settings_volume), volume, 0f, 1f) {
+                    volume = it; prefs.volume = it
                     vm.refreshPresentation()
                 }
             }
@@ -171,7 +200,7 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- controls
         item {
             SectionCard(
-                icon = "🎮",
+                icon = Icons.Filled.Gamepad,
                 title = stringResource(R.string.settings_controls_title)
             ) {
                 SegmentedRow(
@@ -182,27 +211,27 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
                         stringResource(R.string.layout_one_hand),
                         stringResource(R.string.layout_custom),
                     ),
-                    prefs.overlayLayout,
-                ) { prefs.overlayLayout = it }
+                    overlayLayout,
+                ) { overlayLayout = it; overlayLayout = it; prefs.overlayLayout = it }
 
-                SwitchRow(stringResource(R.string.settings_overlay), prefs.overlayVisible) {
-                    prefs.overlayVisible = it
+                SwitchRow(stringResource(R.string.settings_overlay), overlayVisible) {
+                    overlayVisible = it
                 }
 
                 SliderRow(
                     stringResource(R.string.settings_overlay_opacity),
-                    prefs.overlayOpacity, 0.2f, 1f,
-                ) { prefs.overlayOpacity = it }
+                    overlayOpacity, 0.2f, 1f,
+                ) { overlayOpacity = it; overlayOpacity = it; prefs.overlayOpacity = it }
 
                 SliderRow(
                     stringResource(R.string.settings_overlay_scale),
-                    prefs.overlayScale, 0.6f, 1.4f,
-                ) { prefs.overlayScale = it }
+                    overlayScale, 0.6f, 1.4f,
+                ) { overlayScale = it; overlayScale = it; prefs.overlayScale = it }
 
                 SliderRow(
                     stringResource(R.string.settings_turbo),
-                    prefs.turboHz.toFloat(), 5f, 60f,
-                ) { prefs.turboHz = it.toInt().coerceIn(5, 60) }
+                    turboHz, 5f, 60f,
+                ) { turboHz = it; turboHz = it; prefs.turboHz = it.toInt().coerceIn(5, 60) }
 
                 Button(
                     onClick = onOpenControlsEditor,
@@ -222,22 +251,22 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- emulation
         item {
             SectionCard(
-                icon = "⚙️",
+                icon = Icons.Filled.Memory,
                 title = stringResource(R.string.settings_emulation)
             ) {
                 SliderRow(
                     stringResource(R.string.settings_rewind),
-                    prefs.rewindSeconds.toFloat(), 0f, 60f,
-                ) { prefs.rewindSeconds = it.toInt() }
+                    rewindSeconds, 0f, 60f,
+                ) { rewindSeconds = it; rewindSeconds = it; prefs.rewindSeconds = it.toInt() }
                 SliderRow(
                     stringResource(R.string.settings_runahead),
-                    prefs.runAhead.toFloat(), 0f, 3f,
-                ) { prefs.runAhead = it.toInt() }
-                SwitchRow(stringResource(R.string.settings_sram), prefs.sramEnabled) {
-                    prefs.sramEnabled = it
+                    runAhead, 0f, 3f,
+                ) { runAhead = it; runAhead = it; prefs.runAhead = it.toInt() }
+                SwitchRow(stringResource(R.string.settings_sram), sramEnabled) {
+                    sramEnabled = it
                 }
-                SwitchRow(stringResource(R.string.settings_autosave), prefs.autoSaveOnExit) {
-                    prefs.autoSaveOnExit = it
+                SwitchRow(stringResource(R.string.settings_autosave), autoSaveOnExit) {
+                    autoSaveOnExit = it
                 }
             }
         }
@@ -245,7 +274,7 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- core
         item {
             SectionCard(
-                icon = "🧩",
+                icon = Icons.Filled.Extension,
                 title = stringResource(R.string.settings_core_options)
             ) {
                 val options = vm.options
@@ -282,7 +311,7 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
         // ---------------------------------------------------------------- about
         item {
             SectionCard(
-                icon = "ℹ️",
+                icon = Icons.Filled.Info,
                 title = stringResource(R.string.settings_about)
             ) {
                 AboutRow(
@@ -306,7 +335,7 @@ fun SettingsScreen(vm: EmulatorViewModel, onOpenControlsEditor: () -> Unit) {
 /* ---------------------------------------------------------- reusable pieces */
 
 @Composable
-fun SectionCard(icon: String, title: String, content: @Composable () -> Unit) {
+fun SectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,7 +352,7 @@ fun SectionCard(icon: String, title: String, content: @Composable () -> Unit) {
                     .background(MarioBoxColors.PrimaryRed.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(icon, fontSize = 15.sp)
+                Icon(icon, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(8.dp))
             Text(

@@ -46,6 +46,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -251,7 +261,7 @@ fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit) {
                 shape = RoundedCornerShape(20.dp),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("⚠️", fontSize = 20.sp)
+                        Icon(Icons.Filled.Warning, contentDescription = null, tint = MarioBoxColors.AccentAmber, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             stringResource(R.string.app_name),
@@ -368,12 +378,12 @@ private fun SearchSection(
             )
         },
         leadingIcon = {
-            Text("🔍", fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp))
+            Icon(Icons.Filled.Search, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.padding(start = 4.dp).size(14.dp))
         },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = onClear) {
-                    Text("✕", color = MarioBoxColors.TextSecondary, fontSize = 14.sp)
+                    Icon(Icons.Filled.Close, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(14.dp))
                 }
             }
         },
@@ -476,7 +486,7 @@ private fun FeaturedCartridgeCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Text("▶", color = Color.White, fontSize = 14.sp)
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.library_play_now),
@@ -594,7 +604,7 @@ private fun CartridgeCard(
                         .clip(CircleShape)
                         .background(MarioBoxColors.PrimaryRed.copy(alpha = 0.15f))
                 ) {
-                    Text("▶", color = MarioBoxColors.PrimaryRed, fontSize = 14.sp)
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(16.dp))
                 }
 
                 Spacer(Modifier.width(4.dp))
@@ -604,7 +614,7 @@ private fun CartridgeCard(
                     onClick = onInfo,
                     modifier = Modifier.size(34.dp)
                 ) {
-                    Text("ℹ", color = MarioBoxColors.TextSecondary, fontSize = 14.sp)
+                    Icon(Icons.Filled.Info, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(14.dp))
                 }
 
                 // Delete Action
@@ -612,7 +622,7 @@ private fun CartridgeCard(
                     onClick = onDelete,
                     modifier = Modifier.size(34.dp)
                 ) {
-                    Text("🗑", color = MarioBoxColors.TextTertiary, fontSize = 14.sp)
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = MarioBoxColors.TextTertiary, modifier = Modifier.size(14.dp))
                 }
             }
         }
@@ -681,7 +691,7 @@ private fun EmptyStateView(onImport: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("＋", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.library_import),
@@ -704,7 +714,7 @@ private fun NoSearchResultsView(query: String) {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🔍", fontSize = 36.sp)
+            Icon(Icons.Filled.Search, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(36.dp))
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "لا توجد نتائج لـ \"$query\"",
@@ -727,7 +737,7 @@ private fun CartridgeInfoDialog(
         shape = RoundedCornerShape(20.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🕹️", fontSize = 20.sp)
+                Icon(Icons.Filled.VideogameAsset, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = cartridge.name,
