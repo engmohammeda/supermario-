@@ -50,7 +50,7 @@ OPT      ?= -O1
 # older Android does not — and a core .so with an unresolved symbol fails at
 # dlopen, on the user's phone, with no diagnostic. Suppressing that one builtin
 # keeps the object self-contained on every API level we ship.
-CORE_CFLAGS := $(DEPFLAGS) $(OPT) -g -fPIC -std=gnu11 -w -D__LIBRETRO__ $(COREDEFINES) $(INCFLAGS) \
+CORE_CFLAGS := $(DEPFLAGS) $(OPT) -g -fPIC -std=gnu11 -w -D__LIBRETRO__ -DFRONTEND_SUPPORTS_ARGB888 $(COREDEFINES) $(INCFLAGS) \
                -I$(CORE_DIR) -include compat/strl.h \
                -fno-builtin-sincos -fno-builtin-sincosf
 LIBRETRO_COMM_DIR := $(LIBRETRO_DIR)/libretro-common
