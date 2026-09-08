@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +47,8 @@ fun ControlsLayer(
     /** Per-control opacity from the custom editor (null = use the global one). */
     opacityFor: ((PadAction) -> Float)? = null,
 ) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
         val width: Dp = maxWidth
         val height: Dp = maxHeight
         val k = scale.coerceIn(0.6f, 1.4f)
@@ -86,6 +90,7 @@ fun ControlsLayer(
             }
         }
     }
+}
 }
 
 /**

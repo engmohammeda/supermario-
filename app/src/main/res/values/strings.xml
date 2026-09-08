@@ -146,4 +146,8 @@
     <string name="btn_pause">إيقاف مؤقت</string>
     <string name="delete">حذف</string>
     <string name="cancel">إلغاء</string>
+
+    <string name="delete_title">حذف اللعبة</string>
+    <string name="delete_body">هل أنت متأكد من حذف "%1$s"؟ هذا الإجراء لا يمكن التراجع عنه.</string>
+    <string name="delete_saves_too">حذف ملفات الحفظ والـ States أيضًا</string>
 </resources>

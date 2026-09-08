@@ -98,9 +98,26 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Generate debug keystore
+      - name: Setup persistent keystore
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.MARIOBOX_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.MARIOBOX_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.MARIOBOX_KEY_ALIAS }}
+          KS_KEY_PASS: ${{ secrets.MARIOBOX_KEY_PASSWORD }}
         run: |
-          if [ ! -f "debug.keystore" ]; then
+          if [ -n "$KS_B64" ]; then
+            echo "Decoding custom release keystore from GitHub Secrets..."
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/mariobox-release.jks"
+            echo "MARIOBOX_KEYSTORE_PATH=$RUNNER_TEMP/mariobox-release.jks" >> "$GITHUB_ENV"
+            echo "MARIOBOX_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "MARIOBOX_KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
+            echo "MARIOBOX_KEY_PASSWORD=$KS_KEY_PASS" >> "$GITHUB_ENV"
+          elif [ -f "debug.keystore.base64" ]; then
+            echo "Restoring persistent repo keystore from debug.keystore.base64..."
+            base64 -d debug.keystore.base64 > debug.keystore
+          elif [ ! -f "debug.keystore" ]; then
+            echo "Generating new debug keystore..."
             keytool -genkeypair -v \
               -keystore "debug.keystore" \
               -storepass android \

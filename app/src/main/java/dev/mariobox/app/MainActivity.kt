@@ -110,6 +110,7 @@ fun MarioBoxApp(vm: EmulatorViewModel, showGame: Boolean, onShowGame: (Boolean) 
                         onShowGame(true)
                         vm.start(c)
                     },
+                    onSheet = { sheet = it }
                 )
             }
 

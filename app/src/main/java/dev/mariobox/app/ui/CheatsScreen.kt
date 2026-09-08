@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Delete
@@ -61,70 +62,38 @@ import dev.mariobox.engine.Cheat
  */
 @Composable
 fun CheatsScreen(vm: EmulatorViewModel) {
-    var mode by remember { mutableStateOf(0) } // 0 = library, 1 = applied
+    var mode by remember { mutableStateOf(0) }
     var query by remember { mutableStateOf("") }
     var category by remember { mutableStateOf<CheatLibrary.Category?>(null) }
     var zoomLevel by remember { mutableStateOf(vm.prefs.zoom) }
     val cheats = vm.cheats
 
-    Column(Modifier.fillMaxSize()) {
-        // One-tap features ---------------------------------------------------
-        @OptIn(ExperimentalLayoutApi::class)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = 2.dp)
-        ) {
-            CheatLibrary.quickActions.forEach { a ->
-                Surface(
-                    onClick = {
-                        a.zoom?.let { vm.setZoom(it) }
-                        vm.applyCheatCodes(a.codes, a.title, a.raw)
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    color = MarioBoxColors.PrimaryRed.copy(alpha = 0.16f),
-                    modifier = Modifier.border(1.dp, MarioBoxColors.PrimaryRedGlow, RoundedCornerShape(10.dp))
-                ) {
-                    Text(
-                        a.title,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        // View features (zoom) — instant, reversible, saved with the settings. --
-        Spacer(Modifier.height(6.dp))
-        @OptIn(ExperimentalLayoutApi::class)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = 2.dp)
-        ) {
-            listOf(
-                Triple(Icons.Filled.Remove, "إبعاد", -0.25f),
-                Triple(Icons.Filled.Add, "تقريب", 0.25f),
-                Triple(Icons.Filled.Restore, "إعادة 1:1", 0f),
-            ).forEach { (icon, label, delta) ->
-                Surface(
-                    onClick = {
-                        val next = if (delta == 0f) 1f else (vm.prefs.zoom + delta)
-                            .coerceIn(dev.mariobox.engine.RenderSettings.ZOOM_MIN, dev.mariobox.engine.RenderSettings.ZOOM_MAX)
-                        vm.setZoom(next)
-                        zoomLevel = next
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    color = MarioBoxColors.SecondaryCyan.copy(alpha = 0.14f),
-                    modifier = Modifier.border(1.dp, MarioBoxColors.SecondaryCyan, RoundedCornerShape(10.dp))
-                ) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 16.dp)
+    ) {
+        // Quick Actions
+        item {
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(horizontal = 2.dp)
+            ) {
+                CheatLibrary.quickActions.forEach { a ->
+                    Surface(
+                        onClick = {
+                            a.zoom?.let { vm.setZoom(it) }
+                            vm.applyCheatCodes(a.codes, a.title, a.raw)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MarioBoxColors.PrimaryRed.copy(alpha = 0.16f),
+                        modifier = Modifier.border(1.dp, MarioBoxColors.PrimaryRedGlow, RoundedCornerShape(10.dp))
+                    ) {
                         Text(
-                            "$label · ${(zoomLevel * 100).toInt()}%",
+                            a.title,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
@@ -134,59 +103,121 @@ fun CheatsScreen(vm: EmulatorViewModel) {
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        // Library / applied toggle --------------------------------------------
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            ModePill(
-                label = "المكتبة (${CheatLibrary.cheats.size})",
-                selected = mode == 0,
-                onClick = { mode = 0 },
-                modifier = Modifier.weight(1f)
-            )
-            ModePill(
-                label = "المفعّلة (${cheats.size})",
-                selected = mode == 1,
-                onClick = { mode = 1 },
-                modifier = Modifier.weight(1f)
-            )
+        // View Features
+        item {
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(horizontal = 2.dp)
+            ) {
+                listOf(
+                    Triple(Icons.Filled.Remove, "إبعاد", -0.25f),
+                    Triple(Icons.Filled.Add, "تقريب", 0.25f),
+                    Triple(Icons.Filled.Restore, "إعادة 1:1", 0f),
+                ).forEach { (icon, label, delta) ->
+                    Surface(
+                        onClick = {
+                            val next = if (delta == 0f) 1f else (vm.prefs.zoom + delta)
+                                .coerceIn(dev.mariobox.engine.RenderSettings.ZOOM_MIN, dev.mariobox.engine.RenderSettings.ZOOM_MAX)
+                            vm.setZoom(next)
+                            zoomLevel = next
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MarioBoxColors.SecondaryCyan.copy(alpha = 0.14f),
+                        modifier = Modifier.border(1.dp, MarioBoxColors.SecondaryCyan, RoundedCornerShape(10.dp))
+                    ) {
+                        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "$label · ${(zoomLevel * 100).toInt()}%",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        if (mode == 0) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it.uppercase() },
+        // Toggle
+        item {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(stringResource(R.string.cheats_search), fontSize = 12.sp) },
-                leadingIcon = { Text("🔍", fontSize = 13.sp) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MarioBoxColors.Surface,
-                    unfocusedContainerColor = MarioBoxColors.Surface,
-                    focusedBorderColor = MarioBoxColors.PrimaryRed,
-                    unfocusedBorderColor = MarioBoxColors.SurfaceBorder
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ModePill(
+                    label = "المكتبة (${CheatLibrary.cheats.size})",
+                    selected = mode == 0,
+                    onClick = { mode = 0 },
+                    modifier = Modifier.weight(1f)
                 )
-            )
-            Spacer(Modifier.height(6.dp))
-            CategoryStrip(selected = category, onPick = { category = it })
-            Spacer(Modifier.height(6.dp))
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                LibraryList(
-                    presets = CheatLibrary.search(query).filter {
-                        category == null || it.category == category
-                    },
-                    onApply = { vm.applyCheatCodes(it.codes, it.title, it.raw) }
+                ModePill(
+                    label = "المفعّلة (${cheats.size})",
+                    selected = mode == 1,
+                    onClick = { mode = 1 },
+                    modifier = Modifier.weight(1f)
                 )
             }
+        }
+
+        if (mode == 0) {
+            item {
+                Column {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it.uppercase() },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.cheats_search), fontSize = 12.sp) },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MarioBoxColors.Surface,
+                            unfocusedContainerColor = MarioBoxColors.Surface,
+                            focusedBorderColor = MarioBoxColors.PrimaryRed,
+                            unfocusedBorderColor = MarioBoxColors.SurfaceBorder
+                        )
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    CategoryStrip(selected = category, onPick = { category = it })
+                }
+            }
+            
+            val itemsList = CheatLibrary.search(query).filter { category == null || it.category == category }
+            if (itemsList.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.cheats_no_results), color = MarioBoxColors.TextTertiary, fontSize = 13.sp)
+                    }
+                }
+            } else {
+                items(itemsList, key = { it.id }) { p ->
+                    LibraryRow(preset = p, onApply = { vm.applyCheatCodes(p.codes, p.title, p.raw) })
+                }
+            }
         } else {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                AppliedCheatList(vm, cheats)
+            if (cheats.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(34.dp), tint = MarioBoxColors.TextSecondary)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                stringResource(R.string.cheats_none),
+                                color = MarioBoxColors.TextSecondary,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(cheats, key = { it.id }) { c ->
+                    val index = cheats.indexOf(c)
+                    AppliedCheatRow(c, index, vm)
+                }
             }
         }
     }
@@ -425,4 +456,46 @@ private fun categoryLabel(c: CheatLibrary.Category): String = when (c) {
     CheatLibrary.Category.LEVELS -> "أعداء ومراحل"
     CheatLibrary.Category.SPEED_FUN -> "سرعة ومتعة"
     CheatLibrary.Category.RAW -> "خام (تجريبي)"
+}
+
+@Composable
+private fun AppliedCheatRow(c: Cheat, index: Int, vm: EmulatorViewModel) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MarioBoxColors.Surface)
+            .border(1.dp, MarioBoxColors.SurfaceBorder, RoundedCornerShape(12.dp))
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = c.enabled,
+            onCheckedChange = { on -> vm.setCheatEnabled(index, on) },
+            colors = CheckboxDefaults.colors(
+                checkedColor = MarioBoxColors.PrimaryRed,
+                uncheckedColor = MarioBoxColors.TextSecondary
+            )
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                c.code,
+                style = MaterialTheme.typography.titleSmall,
+                color = MarioBoxColors.TextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+            val live = vm.cheatFromCore(c.id)
+            Text(
+                c.description.ifBlank { c.kindName } +
+                    if (live != null) " · " + stringResource(R.string.cheats_live, live.code) else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MarioBoxColors.SecondaryCyan,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = { vm.removeCheat(index) }) {
+            Icon(Icons.Filled.Delete, contentDescription = null, tint = MarioBoxColors.TextTertiary, modifier = Modifier.size(18.dp))
+        }
+    }
 }

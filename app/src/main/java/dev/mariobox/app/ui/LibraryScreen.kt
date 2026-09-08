@@ -26,6 +26,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -86,7 +91,7 @@ import dev.mariobox.engine.INesHeader
 import kotlinx.coroutines.delay
 
 @Composable
-fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit) {
+fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit, onSheet: (Sheet) -> Unit) {
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
@@ -98,773 +103,324 @@ fun LibraryScreen(vm: EmulatorViewModel, onPlay: (Cartridge) -> Unit) {
     }
 
     var items by remember { mutableStateOf<List<Cartridge>>(emptyList()) }
-    var query by remember { mutableStateOf("") }
-    var selectedInfoCartridge by remember { mutableStateOf<Cartridge?>(null) }
+    var selectedIndex by remember { mutableStateOf(0) }
     var deleteCandidate by remember { mutableStateOf<Cartridge?>(null) }
     var deleteWithSaves by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { items = vm.library.roms }
     LaunchedEffect(vm.busy) { if (!vm.busy) items = vm.library.roms }
 
-    val focusManager = LocalFocusManager.current
+    // Ensure selectedIndex is valid
+    LaunchedEffect(items.size) {
+        if (selectedIndex >= items.size && items.isNotEmpty()) {
+            selectedIndex = items.size - 1
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MarioBoxColors.HeroGradient)
-            .systemBarsPadding()
+            .background(MarioBoxColors.Background)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Top Bar Header with brand glow
-            HeaderSection(
-                totalCount = items.size,
+        if (items.isEmpty()) {
+            EmptyLibraryState(
                 onImport = { importLauncher.launch(arrayOf("*/*")) }
             )
-
-            // Search & Filter Box
-            SearchSection(
-                query = query,
-                onQueryChange = { query = it },
-                onClear = { query = "" }
-            )
-
-            val filtered = items.filter {
-                query.isBlank() || it.name.contains(query, ignoreCase = true)
-            }
-
-            val lastPlayed = items.firstOrNull { it.path == vm.prefs.lastRomPath }
-
-            if (items.isEmpty()) {
-                EmptyStateView(onImport = { importLauncher.launch(arrayOf("*/*")) })
-            } else if (filtered.isEmpty()) {
-                NoSearchResultsView(query = query)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Quick Resume Hero banner if last played matches
-                    if (query.isBlank() && lastPlayed != null) {
-                        item(key = "hero_last_played") {
-                            FeaturedCartridgeCard(
-                                cartridge = lastPlayed,
-                                onPlay = { onPlay(lastPlayed) },
-                                onInfo = { selectedInfoCartridge = lastPlayed }
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.library_all_games),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MarioBoxColors.TextSecondary,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    items(filtered, key = { it.path }) { cartridge ->
-                        CartridgeCard(
-                            cartridge = cartridge,
-                            isLastPlayed = cartridge.path == vm.prefs.lastRomPath,
-                            onPlay = { onPlay(cartridge) },
-                            onInfo = { selectedInfoCartridge = cartridge },
-                            onDelete = {
-                                deleteCandidate = cartridge
-                                deleteWithSaves = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        // Info Dialog
-        selectedInfoCartridge?.let { c ->
-            CartridgeInfoDialog(
-                cartridge = c,
-                onDismiss = { selectedInfoCartridge = null },
-                onPlay = {
-                    selectedInfoCartridge = null
-                    onPlay(c)
-                }
+        } else {
+            val selectedCartridge = items.getOrNull(selectedIndex)
+            DashboardView(
+                selectedItem = selectedCartridge,
+                items = items,
+                onSelect = { selectedIndex = items.indexOf(it) },
+                onPlay = { if (selectedCartridge != null) onPlay(selectedCartridge) },
+                onSettings = { onSheet(Sheet.Settings) },
+                onCheats = { onSheet(Sheet.Cheats) },
+                onControls = { onSheet(Sheet.Controls) },
+                onImport = { importLauncher.launch(arrayOf("*/*")) },
+                onDelete = { deleteCandidate = selectedCartridge }
             )
         }
 
-        // Delete Confirmation Dialog
-        deleteCandidate?.let { c ->
-            DeleteConfirmDialog(
-                cartridge = c,
-                deleteWithSaves = deleteWithSaves,
-                onToggleSaves = { deleteWithSaves = it },
-                onConfirm = {
-                    vm.library.remove(c, deleteSaves = deleteWithSaves)
-                    items = vm.library.roms
-                    deleteCandidate = null
-                },
-                onDismiss = { deleteCandidate = null }
-            )
-        }
-
-        // Busy / Loading Overlay
         if (vm.busy) {
             Box(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.65f)),
+                    .background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MarioBoxColors.PrimaryRed)
-                    Spacer(Modifier.height(14.dp))
-                    Text(
-                        text = "جاري استيراد اللعبة...",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
+                CircularProgressIndicator(color = MarioBoxColors.PrimaryRed)
+            }
+        }
+    }
+
+    deleteCandidate?.let { c ->
+        AlertDialog(
+            onDismissRequest = { deleteCandidate = null },
+            containerColor = MarioBoxColors.SurfaceElevated,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Warning, contentDescription = null, tint = MarioBoxColors.AccentAmber, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.delete_title), color = MarioBoxColors.TextPrimary)
                 }
-            }
-        }
-
-        // Toast Messages
-        vm.toast?.let { message ->
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp)
-                    .shadow(12.dp, RoundedCornerShape(16.dp), spotColor = MarioBoxColors.PrimaryRed)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MarioBoxColors.SurfaceElevated)
-                    .border(1.dp, MarioBoxColors.PrimaryRedGlow, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-            ) {
-                Text(
-                    text = message,
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            LaunchedEffect(message) {
-                delay(2600)
-                vm.toast = null
-            }
-        }
-
-        // Error Dialog
-        vm.error?.let { message ->
-            AlertDialog(
-                onDismissRequest = { vm.error = null },
-                containerColor = MarioBoxColors.SurfaceElevated,
-                shape = RoundedCornerShape(20.dp),
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Warning, contentDescription = null, tint = MarioBoxColors.AccentAmber, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White
-                        )
-                    }
-                },
-                text = {
+            },
+            text = {
+                Column {
                     Text(
-                        message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MarioBoxColors.TextPrimary
+                        stringResource(R.string.delete_body, c.name),
+                        color = MarioBoxColors.TextSecondary
                     )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { vm.error = null },
-                        colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
-                        shape = RoundedCornerShape(10.dp)
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { deleteWithSaves = !deleteWithSaves }
                     ) {
-                        Text(stringResource(R.string.close), color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeaderSection(totalCount: Int, onImport: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(MarioBoxColors.PrimaryRed)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MarioBoxColors.TextPrimary
-                )
-            }
-            Text(
-                text = stringResource(R.string.library_total_count, totalCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = MarioBoxColors.SecondaryCyan,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        // Action Button: Add ROM
-        Surface(
-            onClick = onImport,
-            shape = RoundedCornerShape(14.dp),
-            color = Color.Transparent,
-            modifier = Modifier
-                .shadow(8.dp, RoundedCornerShape(14.dp), spotColor = MarioBoxColors.PrimaryRed)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MarioBoxColors.PrimaryGradient)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "＋",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.library_import),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchSection(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClear: () -> Unit
-) {
-    val focusManager = LocalFocusManager.current
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        placeholder = {
-            Text(
-                stringResource(R.string.library_search),
-                color = MarioBoxColors.TextTertiary,
-                fontSize = 14.sp
-            )
-        },
-        leadingIcon = {
-            Icon(Icons.Filled.Search, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.padding(start = 4.dp).size(14.dp))
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(Icons.Filled.Close, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(14.dp))
-                }
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(14.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MarioBoxColors.SurfaceElevated,
-            unfocusedContainerColor = MarioBoxColors.Surface,
-            focusedBorderColor = MarioBoxColors.SecondaryCyan,
-            unfocusedBorderColor = MarioBoxColors.SurfaceBorder,
-            focusedTextColor = MarioBoxColors.TextPrimary,
-            unfocusedTextColor = MarioBoxColors.TextPrimary,
-            cursorColor = MarioBoxColors.SecondaryCyan
-        ),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
-    )
-}
-
-@Composable
-private fun FeaturedCartridgeCard(
-    cartridge: Cartridge,
-    onPlay: () -> Unit,
-    onInfo: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF331626), Color(0xFF14172B))
-                )
-            )
-            .border(1.dp, MarioBoxColors.PrimaryRedGlow, RoundedCornerShape(20.dp))
-            .padding(16.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "⭐ " + stringResource(R.string.library_recent),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MarioBoxColors.AccentAmber,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Surface(
-                    onClick = onInfo,
-                    shape = RoundedCornerShape(8.dp),
-                    color = MarioBoxColors.SurfaceElevated
-                ) {
-                    Text(
-                        text = "ℹ",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        color = MarioBoxColors.TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Text(
-                text = cartridge.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MarioBoxColors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                text = cartridge.info.summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MarioBoxColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Surface(
-                onClick = onPlay,
-                shape = RoundedCornerShape(12.dp),
-                color = Color.Transparent,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MarioBoxColors.PrimaryGradient)
-            ) {
-                Row(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.library_play_now),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CartridgeCard(
-    cartridge: Cartridge,
-    isLastPlayed: Boolean,
-    onPlay: () -> Unit,
-    onInfo: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val borderColor by animateColorAsState(
-        targetValue = if (isLastPlayed) MarioBoxColors.PrimaryRedGlow else MarioBoxColors.SurfaceBorder,
-        label = "border_color"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MarioBoxColors.CardGradient)
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
-            .clickable { onPlay() }
-            .padding(14.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Cartridge Graphic Badge
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (isLastPlayed) MarioBoxColors.PrimaryRed.copy(alpha = 0.2f)
-                        else MarioBoxColors.SurfaceElevated
-                    )
-                    .border(
-                        1.dp,
-                        if (isLastPlayed) MarioBoxColors.PrimaryRed.copy(alpha = 0.5f)
-                        else MarioBoxColors.SurfaceBorderGlow,
-                        RoundedCornerShape(12.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "🎮",
-                    fontSize = 20.sp
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            // Game Name & Metadata Details
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = cartridge.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MarioBoxColors.TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (cartridge.hasBattery) {
-                        Spacer(Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MarioBoxColors.AccentGreen.copy(alpha = 0.15f))
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "🔋 SRAM",
-                                fontSize = 9.sp,
-                                color = MarioBoxColors.AccentGreen,
-                                fontWeight = FontWeight.Bold
+                        Checkbox(
+                            checked = deleteWithSaves,
+                            onCheckedChange = { deleteWithSaves = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MarioBoxColors.PrimaryRed,
+                                uncheckedColor = MarioBoxColors.TextSecondary
                             )
-                        }
+                        )
+                        Text(stringResource(R.string.delete_saves_too), color = MarioBoxColors.TextPrimary, fontSize = 13.sp)
                     }
                 }
-
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    text = "M${cartridge.info.mapper} · ${cartridge.info.prg16k * 16}K PRG · ${if (cartridge.info.chr8k > 0) "${cartridge.info.chr8k * 8}K CHR" else "CHR RAM"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MarioBoxColors.TextTertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            // Action Buttons
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Play Icon Button
-                IconButton(
-                    onClick = onPlay,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(MarioBoxColors.PrimaryRed.copy(alpha = 0.15f))
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.library.remove(c, deleteWithSaves)
+                        items = vm.library.roms
+                        deleteCandidate = null
+                        deleteWithSaves = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed)
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.delete), color = Color.White, fontWeight = FontWeight.Bold)
                 }
-
-                Spacer(Modifier.width(4.dp))
-
-                // Info Action
-                IconButton(
-                    onClick = onInfo,
-                    modifier = Modifier.size(34.dp)
-                ) {
-                    Icon(Icons.Filled.Info, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(14.dp))
-                }
-
-                // Delete Action
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(34.dp)
-                ) {
-                    Icon(Icons.Filled.Delete, contentDescription = null, tint = MarioBoxColors.TextTertiary, modifier = Modifier.size(14.dp))
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteCandidate = null }) {
+                    Text(stringResource(R.string.cancel), color = MarioBoxColors.TextSecondary)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun EmptyStateView(onImport: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .shadow(16.dp, RoundedCornerShape(24.dp), spotColor = MarioBoxColors.PrimaryRed)
-                    .border(2.dp, MarioBoxColors.PrimaryRedGlow, RoundedCornerShape(24.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.img_mario_cover),
-                    contentDescription = "MarioBox Retro Poster",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            Spacer(Modifier.height(22.dp))
-
-            Text(
-                text = stringResource(R.string.library_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MarioBoxColors.TextPrimary
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = stringResource(R.string.library_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MarioBoxColors.TextSecondary,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Surface(
-                onClick = onImport,
-                shape = RoundedCornerShape(14.dp),
-                color = Color.Transparent,
-                modifier = Modifier
-                    .shadow(12.dp, RoundedCornerShape(14.dp), spotColor = MarioBoxColors.PrimaryRed)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MarioBoxColors.PrimaryGradient)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.library_import),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NoSearchResultsView(query: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.Search, contentDescription = null, tint = MarioBoxColors.TextSecondary, modifier = Modifier.size(36.dp))
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "لا توجد نتائج لـ \"$query\"",
-                style = MaterialTheme.typography.titleMedium,
-                color = MarioBoxColors.TextSecondary
-            )
-        }
-    }
-}
-
-@Composable
-private fun CartridgeInfoDialog(
-    cartridge: Cartridge,
-    onDismiss: () -> Unit,
-    onPlay: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MarioBoxColors.SurfaceElevated,
-        shape = RoundedCornerShape(20.dp),
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.VideogameAsset, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = cartridge.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MarioBoxColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoRow("Mapper", "${cartridge.info.mapper}")
-                InfoRow("PRG ROM", "${cartridge.info.prg16k * 16} KB")
-                InfoRow("CHR", if (cartridge.info.chr8k > 0) "${cartridge.info.chr8k * 8} KB" else "RAM")
-                InfoRow("Mirroring", cartridge.info.mirroring.label)
-                InfoRow("Battery Save", if (cartridge.info.battery) "Yes (SRAM)" else "No")
-                InfoRow("File Size", "${cartridge.sizeBytes / 1024} KB")
-                InfoRow("Path", cartridge.file.name)
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onPlay,
-                colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(stringResource(R.string.library_play), color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.close), color = MarioBoxColors.TextSecondary)
-            }
-        }
-    )
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MarioBoxColors.Surface)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MarioBoxColors.TextSecondary)
-        Text(
-            value,
-            style = MaterialTheme.typography.labelMedium,
-            color = MarioBoxColors.TextPrimary,
-            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
 @Composable
-private fun DeleteConfirmDialog(
-    cartridge: Cartridge,
-    deleteWithSaves: Boolean,
-    onToggleSaves: (Boolean) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+private fun EmptyLibraryState(onImport: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(MarioBoxColors.HeroGradient),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Filled.VideogameAsset, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(64.dp))
+        Spacer(Modifier.height(24.dp))
+        Text(
+            stringResource(R.string.library_empty),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "استورد ألعاب بصيغة .nes أو .zip للبدء",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MarioBoxColors.TextSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 40.dp)
+        )
+        Spacer(Modifier.height(32.dp))
+        Button(
+            onClick = onImport,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
+            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.library_import), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun DashboardView(
+    selectedItem: Cartridge?,
+    items: List<Cartridge>,
+    onSelect: (Cartridge) -> Unit,
+    onPlay: () -> Unit,
+    onSettings: () -> Unit,
+    onCheats: () -> Unit,
+    onControls: () -> Unit,
+    onImport: () -> Unit,
+    onDelete: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MarioBoxColors.SurfaceElevated,
-        shape = RoundedCornerShape(20.dp),
-        title = {
-            Text(
-                stringResource(R.string.library_delete_confirm),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MarioBoxColors.TextPrimary
-            )
-        },
-        text = {
-            Column {
+    Box(Modifier.fillMaxSize()) {
+        // Blurred background effect for hero
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MarioBoxColors.HeroGradient)
+        )
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+        ) {
+            // Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = cartridge.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MarioBoxColors.TextSecondary
+                    stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
                 )
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                IconButton(
+                    onClick = onImport,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MarioBoxColors.Surface)
-                        .clickable { onToggleSaves(!deleteWithSaves) }
-                        .padding(8.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.1f))
                 ) {
-                    Checkbox(
-                        checked = deleteWithSaves,
-                        onCheckedChange = onToggleSaves,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MarioBoxColors.PrimaryRed,
-                            uncheckedColor = MarioBoxColors.TextSecondary
-                        )
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        stringResource(R.string.library_delete_with_saves),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MarioBoxColors.TextPrimary
-                    )
+                    Icon(Icons.Filled.Add, contentDescription = "Import", tint = Color.White)
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(stringResource(R.string.delete), color = Color.White, fontWeight = FontWeight.Bold)
+
+            if (selectedItem != null) {
+                // Hero Area
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(220.dp)
+                            .shadow(24.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MarioBoxColors.SurfaceElevated),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Filled.VideogameAsset, contentDescription = null, tint = MarioBoxColors.PrimaryRed, modifier = Modifier.size(72.dp))
+                            Spacer(Modifier.height(16.dp))
+                            Text("NES", color = MarioBoxColors.TextSecondary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        selectedItem.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "${selectedItem.sizeBytes / 1024} KB",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MarioBoxColors.TextSecondary
+                    )
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // Dashboard Action Buttons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Play Button
+                        Button(
+                            onClick = onPlay,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
+                            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 14.dp)
+                        ) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.library_play), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        // Utility Buttons
+                        UtilityButton(Icons.Filled.Settings, onSettings)
+                        UtilityButton(Icons.Filled.AutoFixHigh, onCheats)
+                        UtilityButton(Icons.Filled.Gamepad, onControls)
+                        UtilityButton(Icons.Filled.Delete, onDelete, tint = MarioBoxColors.TextTertiary)
+                    }
+                }
+            } else {
+                Spacer(Modifier.weight(1f))
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel), color = MarioBoxColors.TextSecondary)
+
+            // Bottom Carousel
+            if (items.size > 1) {
+                Column(Modifier.padding(bottom = 24.dp)) {
+                    Text(
+                        "مكتبة الألعاب",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(items) { item ->
+                            val isSelected = item == selectedItem
+                            Box(
+                                modifier = Modifier
+                                    .width(100.dp)
+                                    .height(75.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(
+                                        2.dp,
+                                        if (isSelected) MarioBoxColors.PrimaryRed else Color.Transparent,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .background(MarioBoxColors.Surface)
+                                    .clickable { onSelect(item) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(item.name.take(3).uppercase(), color = MarioBoxColors.TextTertiary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Spacer(Modifier.height(24.dp))
             }
         }
-    )
+    }
 }
+
+@Composable
+private fun UtilityButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit, tint: Color = Color.White) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = Color.White.copy(alpha = 0.1f),
+        modifier = Modifier.size(48.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
