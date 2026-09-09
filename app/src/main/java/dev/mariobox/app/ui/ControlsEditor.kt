@@ -65,13 +65,7 @@ fun ControlsEditor(vm: EmulatorViewModel, onDone: () -> Unit) {
     }
     var selected by remember { mutableStateOf<PadAction?>(PadAction.A) }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val width: Dp = maxWidth
-        val height: Dp = maxHeight
-        val density = LocalDensity.current
-        val widthPx = with(density) { width.toPx() }
-        val heightPx = with(density) { height.toPx() }
-
+    Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             // Toolbar ---------------------------------------------------------
             Row(
@@ -137,12 +131,18 @@ fun ControlsEditor(vm: EmulatorViewModel, onDone: () -> Unit) {
             }
 
             // Canvas -----------------------------------------------------------
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp, vertical = 4.dp)
             ) {
+                val width: androidx.compose.ui.unit.Dp = maxWidth
+                val height: androidx.compose.ui.unit.Dp = maxHeight
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val widthPx = with(density) { width.toPx() }
+                val heightPx = with(density) { height.toPx() }
+
                 // faint grid so the drag feels like a real editor
                 Box(
                     Modifier

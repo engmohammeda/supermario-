@@ -341,12 +341,16 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
     }
 
     // ------------------------------------------------------------------ save states
-    private val slotCount = 10
+    private val slotCount = 11
 
     private fun slotFile(index: Int): File =
         File(engine.saveDirectory() ?: prefs.savesDir, slotName(index))
 
-    private fun slotName(index: Int) = if (index == QUICK) "quick.mbs" else "slot%02d.mbs".format(index)
+    private fun slotName(index: Int) = when (index) {
+        QUICK -> "quick.mbs"
+        AUTOSAVE -> "autosave.mbs"
+        else -> "slot%02d.mbs".format(index)
+    }
 
     fun slots(): List<Slot> {
         val dir = engine.saveDirectory() ?: return emptyList()
@@ -471,6 +475,14 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
         persistCheats()
     }
 
+    fun removeAllCheats() {
+        if (!engine.active) return
+        val current = engine.cheats()
+        current.forEach { engine.removeCheat(it.id) }
+        reloadCheatList()
+        persistCheats()
+    }
+
     private fun persistCheats() {
         val f = cheatFile() ?: return
         viewModelScope.launch(Dispatchers.IO) {
@@ -545,6 +557,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
     companion object {
         /** Index of the quick save/load slot, past the 10 numbered ones. */
         const val QUICK = 10
+        const val AUTOSAVE = 11
 
         /** FCEUmm's palette option key. */
         const val PALETTE_OPTION = "fceumm_next_palette"

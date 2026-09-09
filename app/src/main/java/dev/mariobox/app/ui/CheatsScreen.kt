@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -214,6 +215,33 @@ fun CheatsScreen(vm: EmulatorViewModel) {
                     }
                 }
             } else {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { vm.powerCycle() },
+                            colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.SurfaceElevated),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("إعادة تشغيل", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = { vm.removeAllCheats() },
+                            colors = ButtonDefaults.buttonColors(containerColor = MarioBoxColors.PrimaryRed),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("إلغاء الكل", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
                 items(cheats, key = { it.id }) { c ->
                     val index = cheats.indexOf(c)
                     AppliedCheatRow(c, index, vm)

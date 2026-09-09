@@ -95,10 +95,10 @@
 
     <string name="close">إغلاق</string>
     <string name="back">رجوع</string>
-    <string name="layout_classic">كلاسيكي (dpad يسار)</string>
-    <string name="layout_mirrored">معكوس (dpad يمين)</string>
-    <string name="layout_one_hand">يد واحدة (يمين)</string>
-    <string name="layout_custom">مخصص (محرّر)</string>
+    <string name="layout_classic">L-Pad</string>
+    <string name="layout_mirrored">R-Pad</string>
+    <string name="layout_one_hand">1H-Pad</string>
+    <string name="layout_custom">Custom</string>
 
     <!-- محرّر الأزرار -->
     <string name="controls_editor_title">محرّر الأزرار</string>

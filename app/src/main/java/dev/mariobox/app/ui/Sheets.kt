@@ -252,8 +252,11 @@ private fun StatesSheet(vm: EmulatorViewModel) {
         ) {
             items(slots, key = { it.index }) { slot ->
                 SlotCell(
-                    label = if (slot.index == 10) stringResource(R.string.states_quick_save)
-                    else "خانة ${slot.index + 1}",
+                    label = when (slot.index) {
+                        10 -> stringResource(R.string.states_quick_save)
+                        11 -> "تلقائي (Auto)"
+                        else -> "خانة ${slot.index + 1}"
+                    },
                     present = slot.present,
                     bytes = slot.bytes,
                     modified = slot.modified,

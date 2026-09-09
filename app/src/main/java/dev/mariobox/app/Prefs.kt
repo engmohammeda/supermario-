@@ -84,9 +84,9 @@ class Prefs(context: Context) {
     /** Which overlay preset to draw; the custom editor maps this to a saved map. */
     var overlayLayout: Int
         get() = try {
-            sp.getInt("overlay_layout", LAYOUT_BOTH)
+            sp.getInt("overlay_layout", 0)
         } catch (e: Exception) {
-            LAYOUT_BOTH
+            0
         }
         set(v) = sp.edit().putInt("overlay_layout", v.coerceIn(0, 3)).apply()
 
