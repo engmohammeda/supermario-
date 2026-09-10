@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalView
+import android.view.HapticFeedbackConstants
 
 /** The touch overlay: a modern tactile glassmorphic arcade controller */
 @Composable
@@ -110,6 +112,7 @@ fun HoldButton(
     onRelease: () -> Unit
 ) {
     var pressed by remember(action) { mutableStateOf(false) }
+    val view = LocalView.current
 
     val shape = when {
         isActionButton -> CircleShape
@@ -165,6 +168,7 @@ fun HoldButton(
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     pressed = true
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING)
                     onPress()
                     while (true) {
                         val event = awaitPointerEvent()
@@ -202,6 +206,7 @@ fun TapButton(
     onTap: () -> Unit,
 ) {
     var pressed by remember(label) { mutableStateOf(false) }
+    val view = LocalView.current
 
     Box(
         modifier = modifier
