@@ -117,6 +117,7 @@ typedef struct mb_cheat {
   uint32_t address; /* raw form only */
   uint32_t value;   /* raw form only, -1 style compare in `compare` */
   int32_t compare;  /* -1 when unused */
+  int32_t id;       /* unique id assigned by host */
 } mb_cheat;
 
 /* Core option descriptor for the settings UI.

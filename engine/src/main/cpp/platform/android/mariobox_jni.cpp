@@ -192,6 +192,7 @@ enum CheatField {
   kCheatAddr,
   kCheatValue,
   kCheatCompare,
+  kCheatId,
   kCheatCount
 };
 enum OptionField {
@@ -220,6 +221,8 @@ void fill_cheat(std::vector<std::string> *out, const mb_cheat &c) {
   (*out)[kCheatValue] = num;
   snprintf(num, sizeof(num), "%d", c.compare);
   (*out)[kCheatCompare] = num;
+  snprintf(num, sizeof(num), "%d", c.id);
+  (*out)[kCheatId] = num;
 }
 
 } /* namespace */

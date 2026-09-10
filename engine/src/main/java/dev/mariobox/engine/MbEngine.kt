@@ -369,7 +369,7 @@ class MbEngine {
     }
 
     private fun cheatFromFields(index: Int, f: Array<String>): Cheat = Cheat(
-        id = index,
+        id = f.getOrElse(7) { "$index" }.toIntOrNull() ?: index,
         code = f.getOrElse(0) { "" },
         description = f.getOrElse(1) { "" },
         enabled = f.getOrElse(2) { "0" } != "0",

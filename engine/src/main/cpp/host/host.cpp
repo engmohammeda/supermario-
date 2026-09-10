@@ -535,6 +535,7 @@ mb_status EmuHost::cheat_get(int32_t index, mb_cheat *out) const {
   out->address = e.decoded.address;
   out->value = e.decoded.value;
   out->compare = e.decoded.compare;
+  out->id = e.id;
   return MB_OK;
 }
 

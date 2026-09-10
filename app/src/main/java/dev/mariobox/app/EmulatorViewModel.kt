@@ -477,8 +477,7 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
 
     fun removeAllCheats() {
         if (!engine.active) return
-        val current = engine.cheats()
-        current.forEach { engine.removeCheat(it.id) }
+        engine.clearCheats()
         reloadCheatList()
         persistCheats()
     }
