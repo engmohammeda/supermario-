@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.isActive
 import dev.mariobox.engine.Cheat
 import dev.mariobox.engine.CoreOption
 import dev.mariobox.engine.EngineListener
@@ -241,8 +242,28 @@ class EmulatorViewModel(app: Application) : AndroidViewModel(app), EngineListene
         return true
     }
 
+    private var rewindJob: kotlinx.coroutines.Job? = null
+
     fun overlayPress(action: PadAction, down: Boolean) {
         if (!engine.active) return
+        if (action == PadAction.REWIND) {
+            if (down) {
+                if (rewindJob == null) {
+                    rewindJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        while (isActive) {
+                            if (engine.rewindAvailable() > 0) {
+                                engine.rewindStep(2)
+                            }
+                            kotlinx.coroutines.delay(33)
+                        }
+                    }
+                }
+            } else {
+                rewindJob?.cancel()
+                rewindJob = null
+            }
+            return
+        }
         val turbo = PadLayout.turboBitFor(action)
         if (turbo != 0) {
             turboMask = if (down) turboMask or turbo else turboMask and turbo.inv()

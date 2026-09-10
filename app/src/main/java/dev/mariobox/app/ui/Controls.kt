@@ -55,7 +55,7 @@ fun ControlsLayer(
         val height: Dp = maxHeight
         val k = scale.coerceIn(0.6f, 1.4f)
         for ((action, p) in placements) {
-            val isMomentary = PadLayout.bitFor(action) == 0 && PadLayout.turboBitFor(action) == 0
+            val isMomentary = PadLayout.bitFor(action) == 0 && PadLayout.turboBitFor(action) == 0 && action != PadAction.REWIND
             val isActionButton = action == PadAction.A || action == PadAction.B
             val isTurboButton = action == PadAction.TURBO_A || action == PadAction.TURBO_B
             val isDirection = action == PadAction.UP || action == PadAction.DOWN || action == PadAction.LEFT || action == PadAction.RIGHT

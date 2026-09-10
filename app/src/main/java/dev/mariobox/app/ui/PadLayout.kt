@@ -111,8 +111,8 @@ object PadLayout {
                 PadAction.DOWN -> 0.65f
                 PadAction.LEFT -> 0.55f
                 PadAction.RIGHT -> 0.75f
-                PadAction.A -> 0.95f
-                PadAction.B -> 0.85f
+                PadAction.A -> 0.93f
+                PadAction.B -> 0.83f
                 else -> p.cx
             }
             val y = when (k) {

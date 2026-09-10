@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +96,7 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
     }
 
     var ff by remember { mutableStateOf(false) }
+    var lastGestureTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -106,6 +109,21 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTransformGestures { centroid, pan, zoom, rotation ->
+                    if (System.currentTimeMillis() - lastGestureTime > 2000) {
+                        if (pan.y < -30f) {
+                            lastGestureTime = System.currentTimeMillis()
+                            vm.quickSave()
+                            vm.toast = "تم الحفظ السريع"
+                        } else if (pan.y > 30f) {
+                            lastGestureTime = System.currentTimeMillis()
+                            vm.quickLoad()
+                            vm.toast = "تم الاسترجاع السريع"
+                        }
+                    }
+                }
+            }
     ) {
         // Core SurfaceView -- the only game screen
         AndroidView(
@@ -142,7 +160,7 @@ fun GameScreen(vm: EmulatorViewModel, onBack: () -> Unit, onSheet: (Sheet) -> Un
                 onRelease = { vm.overlayPress(it, false) },
                 onTap = { action ->
                     when (action) {
-                        PadAction.REWIND -> vm.rewind(1)
+                        // REWIND is now handled via onPress/onRelease
                         PadAction.QUICK -> vm.quickSave()
                         PadAction.FAST_FWD -> {
                             ff = !ff
